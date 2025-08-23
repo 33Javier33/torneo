@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planilla de Torneos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/downloadjs@1.4.7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/plugins/MultiDrag.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f0f4f8; 
+            color: #1e293b; 
+        }
+        .container { width: 100%; max-width: 1200px; margin: auto; }
+        .modal-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 50; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); max-width: 90%; width: 400px; }
+        .close-btn { position: absolute; top: 1rem; right: 1.5rem; font-size: 2rem; color: #94a3b8; cursor: pointer; }
+        .header-nav { position: fixed; top: 0; left: 0; width: 100%; display: flex; justify-content: flex-end; padding: 1rem; gap: 1rem; z-index: 20; background-color: #f0f4f8; }
+        .toast { visibility: hidden; min-width: 250px; background-color: #c81e1e; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 100; left: 50%; transform: translateX(-50%); bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: all 0.5s ease-out; }
+        .toast.success { background-color: #2c3e50; }
+        .toast.show { visibility: visible; bottom: 50px; }
+        .player-row.selected { background-color: #bae6fd !important; color: #0c4a6e; cursor: grab; }
+        .player-row.selected:active { cursor: grabbing; }
+        .sortable-ghost { opacity: 0.4; background: #e0f2fe; }
+    </style>
+</head>
+<body class="flex flex-col items-center p-4 md:p-8 min-h-screen pt-20">
+
+    <div id="rutModal" class="modal-container"><div id="modalContent" class="modal-content"></div></div>
+    <div id="editModal" class="modal-container">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeEditModal()">&times;</span>
+            <h2 class="text-xl font-bold mb-4">Editar Participante</h2>
+            <input type="hidden" id="editIndex">
+            
+            <div class="mb-4">
+                <label class="block font-bold mb-1">Nombre:</label>
+                <p id="editNombre" class="p-2 bg-gray-100 rounded"></p>
+            </div>
+            <div class="mb-4">
+                <label class="block font-bold mb-1">RUT:</label>
+                <p id="editRut" class="p-2 bg-gray-100 rounded"></p>
+            </div>
+            <div class="mb-4">
+                <label for="editTipoCupon" class="block font-bold mb-1">Tipo de Cupón:</label>
+                <select id="editTipoCupon" class="w-full p-2 border rounded-md">
+                    <option value="ninguno">Ninguno</option>
+                    <option value="torneo">Cupón Torneo</option>
+                    <option value="canjeo">Cupón Canjeo</option>
+                </select>
+            </div>
+            <button onclick="saveClientChanges()" class="w-full bg-blue-600 text-white py-2 rounded-md font-bold hover:bg-blue-700 transition-colors">Guardar Cambios</button>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    
+    <div class="header-nav">
+        <a href="base.html" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Base de Datos</a>
+        <a href="torneo.html" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors">Ver Torneo</a>
+    </div>
+
+    <div class="container">
+        <div id="classificationView">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-8 text-center">Planilla de Torneos</h1>
+            <div class="bg-white p-6 rounded-lg shadow-2xl">
+                <div id="statsContainer" class="mb-6 p-4 bg-blue-50 rounded-lg flex flex-col sm:flex-row justify-around text-center gap-4">
+                    <div><h3 class="font-bold text-gray-600">Total Entradas</h3><p id="totalCount" class="text-2xl font-extrabold text-blue-800">0</p></div>
+                    <div><h3 class="font-bold text-gray-600">Cupones Torneo</h3><p id="torneoCount" class="text-2xl font-extrabold text-green-600">0</p></div>
+                    <div><h3 class="font-bold text-gray-600">Cupones Canjeo</h3><p id="canjeoCount" class="text-2xl font-extrabold text-indigo-600">0</p></div>
+                </div>
+                <div class="mb-4 flex flex-wrap gap-4 items-center">
+                    <div class="flex items-center space-x-2">
+                        <label for="tournamentSelector" class="font-bold text-lg">Seleccionar Torneo:</label>
+                        <select id="tournamentSelector" onchange="changeTournament()" class="p-2 border rounded-md"></select>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="tournamentDate" class="font-bold text-lg">Fecha:</label>
+                        <input type="date" id="tournamentDate" class="p-2 border rounded-md" onchange="saveDateToLocalStorage()">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="prizePoolInput" class="font-bold text-lg">Pozo Total $:</label>
+                        <input type="text" id="prizePoolInput" placeholder="Ej: 500.000" class="p-2 border rounded-md" oninput="formatPrizePool(this); savePrizePool();">
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label for="registrationEndTime" class="font-bold text-lg">Hora Cierre Inscripción:</label>
+                        <input type="time" id="registrationEndTime" class="p-2 border rounded-md" onchange="saveEndTime()">
+                    </div>
+                </div>
+                <h2 class="text-2xl font-bold mb-4">Añadir Participante</h2>
+                <div class="mb-4 flex flex-wrap gap-2 items-center relative">
+                    <input type="text" id="addNombre" placeholder="Buscar por Nombre" class="flex-grow p-2 border rounded-md min-w-[180px]">
+                    <input type="text" id="addApellido" placeholder="Apellido" class="flex-grow p-2 border rounded-md min-w-[180px]">
+                    <input type="text" id="addRut" placeholder="RUT (si no existe)" oninput="formatRut(this)" maxlength="12" class="flex-grow p-2 border rounded-md min-w-[180px] hidden">
+                    <select id="addTipoCupon" class="flex-grow p-2 border rounded-md min-w-[180px]">
+                        <option value="ninguno">Ninguno</option>
+                        <option value="torneo">Cupón Torneo</option>
+                        <option value="canjeo">Cupón Canjeo</option>
+                    </select>
+                    <button onclick="addClientToTournament()" class="bg-green-600 text-white px-6 py-2 rounded-md font-bold hover:bg-green-700 transition-colors flex-grow sm:flex-grow-0">Añadir</button>
+                    <button onclick="exportToPDF()" class="bg-red-600 text-white px-6 py-2 rounded-md font-bold hover:bg-red-700 transition-colors flex-grow sm:flex-grow-0">Exportar PDF</button>
+                    <button onclick="startFinal()" class="bg-yellow-500 text-white px-6 py-2 rounded-md font-bold hover:bg-yellow-600 transition-colors flex-grow sm:flex-grow-0">Iniciar Final</button>
+                    <div id="searchResults" class="absolute top-full mt-1 w-full bg-white border rounded-md shadow-lg z-10 hidden"></div>
+                </div>
+                <div class="overflow-x-auto"><table id="clientTable" class="min-w-full bg-white"><thead></thead><tbody></tbody></table></div>
+            </div>
+        </div>
+        
+        <div id="finalView" class="hidden">
+             <h1 class="text-3xl md:text-4xl font-extrabold text-red-700 mb-8 text-center">Mesa Final</h1>
+            <div class="bg-white p-6 rounded-lg shadow-2xl">
+                 <div class="mb-4 flex justify-between items-center">
+                    <h2 class="text-2xl font-bold">Finalistas</h2>
+                    <div>
+                        <button onclick="showClassificationView()" class="bg-gray-500 text-white px-6 py-2 rounded-md font-bold hover:bg-gray-600 transition-colors">← Volver</button>
+                        <button onclick="declareWinners()" class="bg-green-500 text-white px-6 py-2 rounded-md font-bold hover:bg-green-600 transition-colors">Declarar Ganadores →</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto"><table id="finalistTable" class="min-w-full bg-white"><thead></thead><tbody></tbody></table></div>
+            </div>
+        </div>
+
+        <!-- NUEVA VISTA DE GANADORES -->
+        <div id="winnersView" class="hidden">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-amber-500 mb-8 text-center">🏆 Ganadores del Torneo 🏆</h1>
+            <div class="bg-white p-6 rounded-lg shadow-2xl">
+                <div class="mb-4 flex justify-between items-center">
+                   <h2 class="text-2xl font-bold">Podio</h2>
+                   <button onclick="showFinalView()" class="bg-gray-500 text-white px-6 py-2 rounded-md font-bold hover:bg-gray-600 transition-colors">← Volver a Mesa Final</button>
+                </div>
+                <div id="winnersList" class="space-y-4">
+                    <!-- Los ganadores se insertarán aquí -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-auto pt-8 text-center text-gray-500 text-sm">
+        <p>CarlosPN Interactive®</p>
+    </footer>
+
+    <script>
+        const TOURNAMENTS = {
+            ruleta: { name: 'Torneo de Ruleta', playersPerTable: 5, rounds: ['Bolita 1', 'Bolita 2', 'Bolita 3'] },
+            draw_poker: { name: 'Torneo de Draw Poker', playersPerTable: 6, rounds: ['Puntaje'] },
+            blackjack: { name: 'Torneo de Blackjack', playersPerTable: 6, rounds: ['Puntaje'] },
+            ruleta_vip: { name: 'Torneo de Ruleta VIP', playersPerTable: 5, rounds: ['Bolita 1', 'Bolita 2', 'Bolita 3'] },
+            draw_poker_vip: { name: 'Torneo de Draw Poker VIP', playersPerTable: 6, rounds: ['Puntaje'] },
+            blackjack_vip: { name: 'Torneo de Blackjack VIP', playersPerTable: 6, rounds: ['Puntaje'] }
+        };
+
+        let selectedIndices = [];
+        let sortableInstance = null;
+        let selectedClientRut = null;
+
+        function showToast(msg, isSuccess = false) { 
+            const t = document.getElementById('toast'); 
+            t.textContent = msg; 
+            t.className = 'toast show';
+            if (isSuccess) t.classList.add('success');
+            setTimeout(() => t.classList.remove('show'), 3000); 
+        }
+        function getClientesBase() { return JSON.parse(localStorage.getItem('clientes_base') || '[]'); }
+        function getClientesTorneo(type) { return JSON.parse(localStorage.getItem(`clientes_${type}`) || '[]'); }
+        function saveClientesTorneo(type, clients) { localStorage.setItem(`clientes_${type}`, JSON.stringify(clients)); }
+        
+        function getFinalists(type) { return JSON.parse(localStorage.getItem(`finalistas_${type}`) || '[]'); }
+
+        function calculateTotal(client, tournamentType) {
+            const cleanValue = (val) => parseInt(String(val || '0').replace(/\./g, ''));
+            const tournament = TOURNAMENTS[tournamentType];
+            let total = 0;
+            tournament.rounds.forEach(round => {
+                const scoreKey = round.toLowerCase().replace(/ /g, '');
+                total += cleanValue(client[scoreKey]);
+            });
+            return total;
+        }
+
+        function getBestEntryPerPlayer(allEntries, tournamentType) {
+            const playersMap = new Map();
+            allEntries.forEach(entry => {
+                if (!playersMap.has(entry.rut)) {
+                    playersMap.set(entry.rut, []);
+                }
+                playersMap.get(entry.rut).push(entry);
+            });
+
+            const bestEntries = [];
+            for (const [rut, entries] of playersMap.entries()) {
+                const sortedEntries = entries.sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
+                bestEntries.push(sortedEntries[0]);
+            }
+            return bestEntries;
+        }
+
+        async function exportToPDF() {
+            try {
+                const { PDFDocument, rgb, StandardFonts } = PDFLib;
+                const doc = await PDFDocument.create();
+                let page = doc.addPage();
+                const { width, height } = page.getSize();
+                const font = await doc.embedFont(StandardFonts.Helvetica);
+                const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+                const tournamentType = document.getElementById('tournamentSelector').value;
+                const tournament = TOURNAMENTS[tournamentType];
+                const clients = getClientesTorneo(tournamentType);
+                const tournamentDate = document.getElementById('tournamentDate').value;
+                const [year, month, day] = tournamentDate.split('-');
+                const formattedDate = `${day}/${month}/${year}`;
+
+                let y = height - 50;
+
+                page.drawText(tournament.name, { x: 50, y, font: fontBold, size: 24, color: rgb(0.1, 0.3, 0.6) });
+                y -= 20;
+                page.drawText(`Fecha: ${formattedDate}`, { x: 50, y, font: font, size: 12, color: rgb(0.2, 0.2, 0.2) });
+                y -= 40;
+
+                page.drawText('Resumen de Entradas', { x: 50, y, font: fontBold, size: 16 });
+                y -= 25;
+                const torneoCount = clients.filter(c => c.cuponTorneo).length;
+                const canjeoCount = clients.filter(c => c.cuponCanjeo).length;
+                page.drawText(`- Total de Entradas: ${clients.length}`, { x: 60, y, font, size: 11 }); y -= 15;
+                page.drawText(`- Cupones Torneo: ${torneoCount}`, { x: 60, y, font, size: 11 }); y -= 15;
+                page.drawText(`- Cupones Canjeo: ${canjeoCount}`, { x: 60, y, font, size: 11 }); y -= 30;
+
+                const prizePool = parseInt(localStorage.getItem('prizePool') || '0');
+                const finalists = getFinalists(tournamentType);
+                const sortedFinalists = finalists.sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
+
+                page.drawText('Premios del Torneo', { x: 50, y, font: fontBold, size: 16 });
+                y -= 25;
+
+                page.drawText(`- Pozo Total: $${prizePool.toLocaleString('es-CL')}`, { x: 60, y, font, size: 11 });
+                y -= 15;
+
+                if (prizePool > 0 && sortedFinalists.length > 0) {
+                    const prizes = [
+                        { percent: 0.5, label: '1er Lugar (50%)' },
+                        { percent: 0.3, label: '2do Lugar (30%)' },
+                        { percent: 0.2, label: '3er Lugar (20%)' }
+                    ];
+
+                    for (let i = 0; i < prizes.length; i++) {
+                        if (sortedFinalists[i]) {
+                            const winner = sortedFinalists[i];
+                            const prizeAmount = (prizePool * prizes[i].percent).toLocaleString('es-CL');
+                            const winnerName = `${winner.nombre} ${winner.apellido}`;
+                            page.drawText(`- ${prizes[i].label}: $${prizeAmount} - ${winnerName}`, { x: 60, y, font, size: 11 });
+                            y -= 15;
+                        }
+                    }
+                }
+                y -= 30;
+
+                page.drawText('Tabla de Puntajes', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
+
+                const headers = ['#', 'Cliente', 'RUT', 'Cupón', ...tournament.rounds, 'Total'];
+                const colWidths = [25, 120, 70, 50, ...Array(tournament.rounds.length).fill(50), 50];
+                let x = 50;
+
+                headers.forEach((header, i) => {
+                    page.drawText(header, { x: x + 2, y, font: fontBold, size: 9 });
+                    x += colWidths[i];
+                });
+                y -= 15;
+                page.drawLine({
+                    start: { x: 50, y: y + 5 },
+                    end: { x: width - 50, y: y + 5 },
+                    thickness: 1,
+                    color: rgb(0.8, 0.8, 0.8),
+                });
+
+                clients.forEach((client, index) => {
+                    if (y < 40) {
+                        page = doc.addPage();
+                        y = height - 50;
+                        x = 50;
+                        headers.forEach((header, i) => {
+                            page.drawText(header, { x: x + 2, y, font: fontBold, size: 9 });
+                            x += colWidths[i];
+                        });
+                        y -= 15;
+                        page.drawLine({
+                            start: { x: 50, y: y + 5 },
+                            end: { x: width - 50, y: y + 5 },
+                            thickness: 1,
+                            color: rgb(0.8, 0.8, 0.8),
+                        });
+                    }
+
+                    let cuponText = 'Ninguno';
+                    if (client.cuponTorneo) cuponText = 'Torneo';
+                    else if (client.cuponCanjeo) cuponText = 'Canjeo';
+
+                    const rowData = [
+                        `${index + 1}`,
+                        `${client.nombre} ${client.apellido}`,
+                        client.rut || 'N/A',
+                        cuponText
+                    ];
+                    tournament.rounds.forEach((round) => {
+                        const scoreKey = round.toLowerCase().replace(/ /g, '');
+                        rowData.push(client[scoreKey] || '0');
+                    });
+                    rowData.push(calculateTotal(client, tournamentType).toLocaleString('es-CL'));
+                    
+                    x = 50;
+                    rowData.forEach((cell, i) => {
+                        page.drawText(String(cell), { x: x + 2, y, font, size: 8 });
+                        x += colWidths[i];
+                    });
+                    y -= 15;
+                });
+
+                const pdfBytes = await doc.save();
+                download(pdfBytes, `planilla-${tournamentType}-${new Date().toISOString().slice(0,10)}.pdf`, "application/pdf");
+                showToast("PDF exportado correctamente.", true);
+            } catch (error) {
+                console.error("Error al generar PDF:", error);
+                showToast("Error al crear el PDF.");
+            }
+        }
+
+
+        function toggleSelection(checkbox, index) {
+            const tr = checkbox.closest('tr');
+            if (checkbox.checked) {
+                if (!selectedIndices.includes(index)) selectedIndices.push(index);
+                tr.classList.add('selected');
+                tr.classList.remove('not-draggable');
+            } else {
+                selectedIndices = selectedIndices.filter(i => i !== index);
+                tr.classList.remove('selected');
+                tr.classList.add('not-draggable');
+            }
+        }
+        function toggleSelectAll(masterCheckbox) {
+            const tableRows = document.querySelectorAll('#clientTable tbody .player-row');
+            selectedIndices = [];
+            tableRows.forEach(tr => {
+                const checkbox = tr.querySelector('input[type="checkbox"]');
+                const index = parseInt(tr.dataset.index);
+                checkbox.checked = masterCheckbox.checked;
+                tr.classList.toggle('selected', masterCheckbox.checked);
+                tr.classList.toggle('not-draggable', !masterCheckbox.checked);
+                if (masterCheckbox.checked) selectedIndices.push(index);
+            });
+        }
+        function initializeSortable() {
+            const tableBody = document.querySelector('#clientTable tbody');
+            if (sortableInstance) sortableInstance.destroy();
+            
+            sortableInstance = new Sortable(tableBody, {
+                multiDrag: true,
+                selectedClass: 'selected',
+                filter: '.not-draggable',
+                preventOnFilter: true,
+                animation: 150,
+                onEnd: (evt) => {
+                    const tournamentType = document.getElementById('tournamentSelector').value;
+                    let clients = getClientesTorneo(tournamentType);
+                    const clientMap = new Map(clients.map(c => [String(c.id), c]));
+                    const newOrderedClients = [];
+                    
+                    const rows = tableBody.querySelectorAll('.player-row');
+                    rows.forEach(row => {
+                        const id = row.dataset.id;
+                        if (clientMap.has(id)) newOrderedClients.push(clientMap.get(id));
+                    });
+
+                    if (newOrderedClients.length === clients.length) {
+                        saveClientesTorneo(tournamentType, newOrderedClients);
+                    } else {
+                        showToast("Error al reordenar.");
+                    }
+
+                    selectedIndices = [];
+                    if(document.querySelector('#clientTable thead input[type="checkbox"]')) {
+                        document.querySelector('#clientTable thead input[type="checkbox"]').checked = false;
+                    }
+                    renderClients(tournamentType);
+                    initializeSortable();
+                }
+            });
+        }
+        
+        function formatNumberForDisplay(value) {
+            if (!value) return '';
+            const cleanValue = String(value).replace(/\D/g, '');
+            if (cleanValue) {
+                return new Intl.NumberFormat('es-CL').format(cleanValue);
+            }
+            return '';
+        }
+
+        function renderClients(tournamentType) {
+            const tableBody = document.querySelector('#clientTable tbody');
+            const tableHead = document.querySelector('#clientTable thead');
+            const tournament = TOURNAMENTS[tournamentType];
+            const clients = getClientesTorneo(tournamentType);
+            
+            tableBody.innerHTML = '';
+            
+            document.getElementById('totalCount').textContent = clients.length;
+            document.getElementById('torneoCount').textContent = clients.filter(c => c.cuponTorneo).length;
+            document.getElementById('canjeoCount').textContent = clients.filter(c => c.cuponCanjeo).length;
+            
+            let headers = `<tr><th class="p-3 w-12"><input type="checkbox" onchange="toggleSelectAll(this)"></th><th class="p-3">Cliente</th><th class="p-3">Cupón</th>`;
+            tournament.rounds.forEach(round => headers += `<th class="p-3">${round}</th>`);
+            headers += `<th class="p-3">Total</th><th class="p-3 text-center">Acciones</th></tr>`;
+            tableHead.innerHTML = headers;
+
+            clients.forEach((client, index) => {
+                if (index % tournament.playersPerTable === 0) {
+                    const mesaRow = tableBody.insertRow();
+                    mesaRow.className = 'bg-sky-200 font-bold text-sky-800';
+                    const titleCell = mesaRow.insertCell();
+                    titleCell.colSpan = 3;
+                    titleCell.className = 'p-2 text-left pl-4';
+                    titleCell.textContent = `Mesa ${Math.floor(index / tournament.playersPerTable) + 1}`;
+                    tournament.rounds.forEach(round => {
+                        const roundCell = mesaRow.insertCell();
+                        roundCell.className = 'p-2 text-sm text-center';
+                        roundCell.textContent = round;
+                    });
+                    const endCell = mesaRow.insertCell();
+                    endCell.colSpan = 2;
+                }
+
+                const tr = tableBody.insertRow();
+                const isSelected = selectedIndices.includes(index);
+                
+                let rowClasses = ['player-row'];
+                if (isSelected) rowClasses.push('selected');
+                else {
+                    rowClasses.push('not-draggable');
+                    rowClasses.push(index % 2 === 0 ? 'bg-sky-50' : 'bg-white');
+                }
+                tr.className = rowClasses.join(' ');
+
+                tr.dataset.index = index;
+                tr.dataset.rut = client.rut; 
+                tr.dataset.id = client.id;
+
+                const selectCell = tr.insertCell();
+                selectCell.className = 'p-2 text-center';
+                selectCell.innerHTML = `<input type="checkbox" onchange="toggleSelection(this, ${index})" ${isSelected ? 'checked' : ''}>`;
+
+                const nombreCell = tr.insertCell();
+                nombreCell.className = 'p-2';
+                nombreCell.innerHTML = `<div class="p-2 rounded hover:bg-sky-100" onclick="showRutModal('${client.rut}')">${client.nombre} ${client.apellido}</div>`;
+
+                const cuponCell = tr.insertCell();
+                cuponCell.className = 'p-2 text-center';
+                let cuponTag = '<span class="bg-slate-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Ninguno</span>';
+                if (client.cuponTorneo) cuponTag = '<span class="bg-green-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Torneo</span>';
+                else if (client.cuponCanjeo) cuponTag = '<span class="bg-indigo-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Canjeo</span>';
+                cuponCell.innerHTML = cuponTag;
+                
+                tournament.rounds.forEach(round => {
+                    const scoreKey = round.toLowerCase().replace(/ /g, '');
+                    const scoreCell = tr.insertCell();
+                    scoreCell.className = 'p-2';
+                    const formattedScore = formatNumberForDisplay(client[scoreKey]);
+                    scoreCell.innerHTML = `<input type="tel" value="${formattedScore}" oninput="formatNumericInput(this)" onchange="updateScore(${index}, '${scoreKey}', this.value)" class="w-full bg-transparent text-center">`;
+                });
+
+                const totalCell = tr.insertCell();
+                totalCell.className = 'p-2 text-center font-bold';
+                totalCell.textContent = calculateTotal(client, tournamentType).toLocaleString('es-CL');
+
+                const accionesCell = tr.insertCell();
+                accionesCell.className = 'p-2 text-center space-x-2';
+                accionesCell.innerHTML = `<button onclick="openEditModal(${index})" class="bg-yellow-400 text-white px-3 py-1 rounded-md text-xs hover:bg-yellow-500">Editar</button><button onclick="deleteClient(${index})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">Eliminar</button>`;
+            });
+        }
+        
+        function addClientToTournament() {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const nombre = document.getElementById('addNombre').value.trim();
+            const apellido = document.getElementById('addApellido').value.trim();
+            const rutInput = document.getElementById('addRut').value.trim();
+            const tipoCupon = document.getElementById('addTipoCupon').value;
+
+            if (!nombre || !apellido) { showToast("Nombre y Apellido son obligatorios."); return; }
+            const finalRut = selectedClientRut || rutInput;
+            if (!finalRut) { showToast("El RUT es obligatorio."); return; }
+
+            const clientsTorneo = getClientesTorneo(tournamentType);
+            const existingEntries = clientsTorneo.filter(c => c.rut === finalRut);
+
+            if (existingEntries.length >= 2) {
+                showToast(`${nombre} ${apellido} ya utilizó sus 2 entradas.`);
+                return;
+            }
+            if (tipoCupon === 'torneo' && existingEntries.some(e => e.cuponTorneo)) {
+                showToast('Este participante ya utilizó el Cupón Torneo.');
+                return;
+            }
+            if (tipoCupon === 'canjeo' && existingEntries.some(e => e.cuponCanjeo)) {
+                showToast('Este participante ya utilizó el Cupón Canjeo.');
+                return;
+            }
+
+            const clientesBase = getClientesBase();
+            if (!clientesBase.some(c => c.rut === finalRut)) {
+                clientesBase.push({ nombre, apellido, rut: finalRut });
+                localStorage.setItem('clientes_base', JSON.stringify(clientesBase));
+            }
+            
+            const clientData = { 
+                id: Date.now() + '-' + Math.random().toString(36).substring(2, 9),
+                nombre, apellido, rut: finalRut, 
+                cuponTorneo: tipoCupon === 'torneo', 
+                cuponCanjeo: tipoCupon === 'canjeo'
+            };
+            TOURNAMENTS[tournamentType].rounds.forEach(round => { clientData[round.toLowerCase().replace(/ /g, '')] = ''; });
+            clientsTorneo.push(clientData);
+            saveClientesTorneo(tournamentType, clientsTorneo);
+            renderClients(tournamentType);
+            initializeSortable();
+            showToast(`Participante añadido: ${nombre} ${apellido}`, true);
+            
+            ['addNombre', 'addApellido', 'addRut'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('addTipoCupon').value = 'ninguno';
+            selectedClientRut = null;
+            document.getElementById('addRut').classList.add('hidden');
+        }
+
+        function updateScore(index, scoreKey, value) {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            let clients = getClientesTorneo(tournamentType);
+            if (clients[index]) {
+                clients[index][scoreKey] = value.replace(/\D/g, '');
+                saveClientesTorneo(tournamentType, clients);
+                renderClients(tournamentType);
+                initializeSortable();
+            }
+        }
+
+        function deleteClient(index) {
+            if (!confirm('¿Estás seguro de que quieres eliminar esta entrada del torneo?')) return;
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            let clients = getClientesTorneo(tournamentType);
+            clients.splice(index, 1);
+            saveClientesTorneo(tournamentType, clients);
+            selectedIndices = [];
+            renderClients(tournamentType);
+            initializeSortable();
+            showToast("Entrada eliminada del torneo.", true);
+        }
+        
+        function openEditModal(index) {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const clients = getClientesTorneo(tournamentType);
+            const client = clients[index];
+            if (!client) return;
+
+            document.getElementById('editIndex').value = index;
+            document.getElementById('editNombre').textContent = `${client.nombre} ${client.apellido}`;
+            document.getElementById('editRut').textContent = client.rut;
+            
+            let currentCupon = 'ninguno';
+            if (client.cuponTorneo) currentCupon = 'torneo';
+            else if (client.cuponCanjeo) currentCupon = 'canjeo';
+            document.getElementById('editTipoCupon').value = currentCupon;
+
+            document.getElementById('editModal').style.display = 'flex';
+        }
+        function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+        function saveClientChanges() {
+            const index = document.getElementById('editIndex').value;
+            const newCuponStatus = document.getElementById('editTipoCupon').value;
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            let clients = getClientesTorneo(tournamentType);
+            
+            if (clients[index]) {
+                clients[index].cuponTorneo = (newCuponStatus === 'torneo');
+                clients[index].cuponCanjeo = (newCuponStatus === 'canjeo');
+                saveClientesTorneo(tournamentType, clients);
+                renderClients(tournamentType);
+                initializeSortable();
+                closeEditModal();
+                showToast("Cambios guardados.", true);
+            }
+        }
+
+        const classificationView = document.getElementById('classificationView');
+        const finalView = document.getElementById('finalView');
+        const winnersView = document.getElementById('winnersView');
+
+        function showClassificationView() {
+            classificationView.style.display = 'block';
+            finalView.style.display = 'none';
+            winnersView.style.display = 'none';
+            localStorage.setItem('tournamentView', 'classification');
+        }
+        function showFinalView() {
+            classificationView.style.display = 'none';
+            finalView.style.display = 'block';
+            winnersView.style.display = 'none';
+            renderFinalists();
+            localStorage.setItem('tournamentView', 'final');
+        }
+        function showWinnersView() {
+            classificationView.style.display = 'none';
+            finalView.style.display = 'none';
+            winnersView.style.display = 'block';
+            renderWinners();
+            localStorage.setItem('tournamentView', 'winners');
+        }
+
+        function startFinal() {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const allEntries = getClientesTorneo(tournamentType);
+            const rankingSize = TOURNAMENTS[tournamentType].playersPerTable;
+            
+            const bestEntries = getBestEntryPerPlayer(allEntries, tournamentType);
+
+            if (bestEntries.length < rankingSize) {
+                showToast(`Se necesitan al menos ${rankingSize} jugadores únicos para iniciar la final.`);
+                return;
+            }
+            
+            const sortedFinalists = bestEntries.sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
+            const finalists = sortedFinalists.slice(0, rankingSize);
+            
+            localStorage.setItem(`finalistas_${tournamentType}`, JSON.stringify(finalists));
+            showToast("Mesa final generada.", true);
+            
+            showFinalView();
+        }
+
+        function declareWinners() {
+            showWinnersView();
+        }
+
+        function saveFinalists(type, finalists) { localStorage.setItem(`finalistas_${type}`, JSON.stringify(finalists)); }
+
+        function renderFinalists() {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const tournament = TOURNAMENTS[tournamentType];
+            const finalists = getFinalists(tournamentType);
+            const tableBody = document.querySelector('#finalistTable tbody');
+            const tableHead = document.querySelector('#finalistTable thead');
+            if(!tableBody || !tableHead) return;
+
+            tableBody.innerHTML = '';
+            let headers = `<tr><th class="p-3">Finalista</th>`;
+            tournament.rounds.forEach(round => headers += `<th class="p-3">${round}</th>`);
+            headers += `<th class="p-3">Total Final</th></tr>`;
+            tableHead.innerHTML = headers;
+
+            finalists.forEach((finalist, index) => {
+                const tr = tableBody.insertRow();
+                tr.className = index % 2 === 0 ? 'bg-sky-50' : 'bg-white';
+
+                const nombreCell = tr.insertCell();
+                nombreCell.className = 'p-2 font-semibold';
+                nombreCell.textContent = `${finalist.nombre} ${finalist.apellido}`;
+
+                tournament.rounds.forEach(round => {
+                    const scoreKey = round.toLowerCase().replace(/ /g, '');
+                    const scoreCell = tr.insertCell();
+                    scoreCell.className = 'p-2';
+                    const formattedScore = formatNumberForDisplay(finalist[scoreKey]);
+                    scoreCell.innerHTML = `<input type="tel" value="${formattedScore}" oninput="formatNumericInput(this)" onchange="updateFinalistScore(${index}, '${scoreKey}', this.value)" class="w-full bg-transparent text-center">`;
+                });
+
+                const totalCell = tr.insertCell();
+                totalCell.className = 'p-2 text-center font-bold';
+                totalCell.textContent = calculateTotal(finalist, tournamentType).toLocaleString('es-CL');
+            });
+        }
+        
+        function renderWinners() {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const prizePool = parseInt(localStorage.getItem('prizePool') || '0');
+            const finalists = getFinalists(tournamentType);
+            const sortedFinalists = finalists.sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
+            const winnersList = document.getElementById('winnersList');
+            winnersList.innerHTML = '';
+
+            const prizes = [
+                { percent: 0.5, label: '1er Lugar', color: 'bg-amber-400', emoji: '🥇' },
+                { percent: 0.3, label: '2do Lugar', color: 'bg-slate-400', emoji: '🥈' },
+                { percent: 0.2, label: '3er Lugar', color: 'bg-amber-600', emoji: '🥉' }
+            ];
+
+            for (let i = 0; i < 3; i++) {
+                const winner = sortedFinalists[i];
+                if (winner) {
+                    const prizeAmount = (prizePool * prizes[i].percent).toLocaleString('es-CL');
+                    const winnerCard = document.createElement('div');
+                    winnerCard.className = `p-4 rounded-lg shadow-lg text-white ${prizes[i].color}`;
+                    winnerCard.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-2xl font-bold">${prizes[i].emoji} ${prizes[i].label}</p>
+                                <p class="text-xl">${winner.nombre} ${winner.apellido}</p>
+                            </div>
+                            <p class="text-3xl font-extrabold">$${prizeAmount}</p>
+                        </div>
+                    `;
+                    winnersList.appendChild(winnerCard);
+                }
+            }
+        }
+
+        function updateFinalistScore(index, scoreKey, value) {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            let finalists = getFinalists(tournamentType);
+            if(finalists[index]) {
+                finalists[index][scoreKey] = value.replace(/\D/g, '');
+                saveFinalists(tournamentType, finalists);
+                renderFinalists();
+            }
+        }
+        
+        function saveDateToLocalStorage() {
+            const dateValue = document.getElementById('tournamentDate').value;
+            if (dateValue) localStorage.setItem('tournamentDate', dateValue);
+        }
+        
+        function formatPrizePool(input) {
+            formatNumericInput(input);
+        }
+
+        function formatRut(input) {
+            let rut = input.value.replace(/[^\dkK]/g, '');
+            rut = rut.replace(/^0+/, '');
+            
+            if (rut.length > 1) {
+                let body = rut.slice(0, -1);
+                let dv = rut.slice(-1).toUpperCase();
+                let formattedBody = new Intl.NumberFormat('es-CL').format(body);
+                input.value = `${formattedBody}-${dv}`;
+            } else {
+                input.value = rut;
+            }
+        }
+
+        function formatNumericInput(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value) {
+                input.value = new Intl.NumberFormat('es-CL').format(value);
+            } else {
+                input.value = '';
+            }
+        }
+
+        function savePrizePool() {
+            const prizePoolInput = document.getElementById('prizePoolInput');
+            const prizePoolValue = prizePoolInput.value.replace(/\./g, ''); 
+            localStorage.setItem('prizePool', prizePoolValue || '0');
+        }
+
+        function saveEndTime() {
+            const endTimeValue = document.getElementById('registrationEndTime').value;
+            localStorage.setItem('registrationEndTime', endTimeValue);
+        }
+
+        function changeTournament() {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            localStorage.setItem('selectedTournament', tournamentType);
+            selectedIndices = [];
+            showClassificationView();
+            renderClients(tournamentType);
+            initializeSortable();
+        }
+        
+        document.getElementById('addNombre').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const searchResults = document.getElementById('searchResults');
+            searchResults.innerHTML = '';
+            document.getElementById('addRut').classList.add('hidden');
+            selectedClientRut = null;
+
+            if (searchTerm.length > 0) {
+                const matches = getClientesBase().filter(c => (c.nombre + ' ' + c.apellido).toLowerCase().includes(searchTerm));
+                if (matches.length > 0) {
+                    matches.forEach(client => {
+                        const div = document.createElement('div');
+                        div.className = 'p-2 hover:bg-gray-200 cursor-pointer';
+                        div.textContent = `${client.nombre} ${client.apellido}`;
+                        div.onclick = () => {
+                            document.getElementById('addNombre').value = client.nombre;
+                            document.getElementById('addApellido').value = client.apellido;
+                            selectedClientRut = client.rut;
+                            searchResults.classList.add('hidden');
+                        };
+                        searchResults.appendChild(div);
+                    });
+                    searchResults.classList.remove('hidden');
+                } else {
+                    document.getElementById('addRut').classList.remove('hidden');
+                }
+            } else {
+                searchResults.classList.add('hidden');
+            }
+        });
+
+        window.addEventListener('click', e => { 
+            if (e.target.id !== 'addNombre' && document.getElementById('searchResults')) {
+                 document.getElementById('searchResults').classList.add('hidden');
+            }
+            if (e.target === document.getElementById('rutModal')) closeRutModal();
+            if (e.target === document.getElementById('editModal')) closeEditModal();
+        });
+
+        function showRutModal(rut) {
+            const client = getClientesBase().find(c => c.rut === rut);
+            const modal = document.getElementById('rutModal');
+            modal.querySelector('#modalContent').innerHTML = `<span class="close-btn" onclick="closeRutModal()">&times;</span><h2 class="text-xl font-bold mb-4">Datos de Cliente</h2><p><span class="font-bold">Nombre:</span> ${client ? `${client.nombre} ${client.apellido}` : 'N/A'}</p><p><span class="font-bold">RUT:</span> ${rut || 'No definido'}</p>`;
+            modal.style.display = 'flex';
+        }
+        function closeRutModal() { document.getElementById('rutModal').style.display = 'none'; }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const selector = document.getElementById('tournamentSelector');
+            Object.keys(TOURNAMENTS).forEach(key => {
+                const option = document.createElement('option');
+                option.value = key; option.textContent = TOURNAMENTS[key].name;
+                selector.appendChild(option);
+            });
+            const savedTournament = localStorage.getItem('selectedTournament') || 'ruleta';
+            selector.value = savedTournament;
+            
+            const savedDate = localStorage.getItem('tournamentDate');
+            if (savedDate) document.getElementById('tournamentDate').value = savedDate;
+            else document.getElementById('tournamentDate').value = new Date().toISOString().split('T')[0];
+            saveDateToLocalStorage(); 
+
+            const prizePoolInput = document.getElementById('prizePoolInput');
+            const savedPrizePool = localStorage.getItem('prizePool') || '';
+            prizePoolInput.value = savedPrizePool;
+            formatPrizePool(prizePoolInput);
+
+            document.getElementById('registrationEndTime').value = localStorage.getItem('registrationEndTime') || '';
+
+            renderClients(savedTournament);
+            initializeSortable();
+            showClassificationView(); // Asegura que la vista inicial sea la correcta
+        });
+    </script>
+</body>
+</html>
+
