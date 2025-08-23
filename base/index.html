@@ -46,7 +46,14 @@
     <div id="toast" class="toast"></div>
 
     <div class="container w-full max-w-4xl">
-        <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-8 text-center">Base de Datos de Clientes</h1>
+        <!-- CONTENEDOR PARA EL TÍTULO Y EL NUEVO BOTÓN -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-8 w-full">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 text-center sm:text-left mb-4 sm:mb-0">Base de Datos de Clientes</h1>
+            <a href="https://torneo-flax.vercel.app/" class="bg-indigo-600 text-white px-6 py-2 rounded-md font-bold hover:bg-indigo-700 transition-colors shadow-lg">
+                Volver a Planilla
+            </a>
+        </div>
+
         <div class="bg-white p-6 rounded-lg shadow-xl">
             <h2 class="text-2xl font-bold mb-4">Gestión de Clientes</h2>
             
@@ -98,7 +105,6 @@
     </footer>
 
     <script>
-        // Variable para guardar el índice del cliente a eliminar
         let clientToDeleteIndex = null;
 
         function showToast(message) {
@@ -194,8 +200,6 @@
             rutInput.value = '';
         }
 
-        // --- Lógica del Modal de Confirmación ---
-
         function showDeleteModal(index) {
             clientToDeleteIndex = index;
             const modal = document.getElementById('deleteConfirmationModal');
@@ -235,8 +239,6 @@
             }
             hideDeleteModal();
         }
-
-        // --- Fin de la Lógica del Modal ---
 
         function exportClients() {
             const clients = getClients();
@@ -298,7 +300,6 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             renderClients();
-            // Añadir el listener para el botón de confirmación del modal
             document.getElementById('confirmDeleteButton').addEventListener('click', confirmAndDelete);
         });
     </script>
