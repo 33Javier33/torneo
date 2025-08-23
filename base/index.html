@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base de Datos de Clientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #1e293b;
+        }
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 100;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 30px;
+            transition: visibility 0s, opacity 0.5s linear;
+            opacity: 0;
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-4 md:p-8">
+
+    <div id="toast" class="toast"></div>
+
+    <div class="container w-full max-w-4xl">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-8 text-center">Base de Datos de Clientes</h1>
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <h2 class="text-2xl font-bold mb-4">Gestión de Clientes</h2>
+            
+            <!-- CONTENEDOR RESPONSIVO PARA INPUTS -->
+            <div class="flex flex-wrap gap-2 mb-4">
+                <input type="text" id="addNombre" placeholder="Nombre" class="flex-grow p-2 border rounded-md min-w-[150px]">
+                <input type="text" id="addApellido" placeholder="Apellido" class="flex-grow p-2 border rounded-md min-w-[150px]">
+                <input type="text" id="addRut" placeholder="RUT" oninput="formatRut(this)" maxlength="12" class="flex-grow p-2 border rounded-md min-w-[150px]">
+                <button onclick="addClient()" class="bg-green-600 text-white px-6 py-2 rounded-md font-bold hover:bg-green-700 transition-colors flex-grow sm:flex-grow-0">Añadir</button>
+            </div>
+
+            <!-- BOTONES DE IMPORTAR Y EXPORTAR -->
+            <div class="flex flex-wrap gap-2 mb-6">
+                <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-6 py-2 rounded-md font-bold hover:bg-blue-700 transition-colors flex-grow sm:flex-grow-0">Importar JSON</button>
+                <input type="file" id="fileInput" class="hidden" accept=".json" onchange="importClients(event)">
+                <button onclick="exportClients()" class="bg-gray-700 text-white px-6 py-2 rounded-md font-bold hover:bg-gray-800 transition-colors flex-grow sm:flex-grow-0">Exportar JSON</button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table id="clientTable" class="min-w-full bg-white">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="py-3 px-4 text-left">Nombre</th>
+                            <th class="py-3 px-4 text-left">Apellido</th>
+                            <th class="py-3 px-4 text-left">RUT</th>
+                            <th class="py-3 px-4 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Clientes se insertarán aquí -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIE DE PÁGINA CON LA FIRMA -->
+    <footer class="mt-auto pt-8 text-center text-gray-500 text-sm">
+        <p>CarlosPN Interactive®</p>
+    </footer>
+
+    <!-- Script de JavaScript -->
+    <script>
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function getClients() {
+            return JSON.parse(localStorage.getItem('clientes_base') || '[]');
+        }
+
+        function saveClients(clients) {
+            localStorage.setItem('clientes_base', JSON.stringify(clients));
+        }
+
+        function renderClients() {
+            const clients = getClients();
+            const tableBody = document.querySelector('#clientTable tbody');
+            tableBody.innerHTML = '';
+            
+            clients.forEach((client, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50 transition-colors border-b';
+                
+                tr.innerHTML = `
+                    <td class="py-3 px-4">${client.nombre}</td>
+                    <td class="py-3 px-4">${client.apellido}</td>
+                    <td class="py-3 px-4">${client.rut}</td>
+                    <td class="py-3 px-4 text-center">
+                        <button onclick="deleteClient(${index})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">Eliminar</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function formatRut(input) {
+            let rut = input.value.replace(/[^\dkK]/g, ''); // Elimina todo excepto números y K
+            rut = rut.replace(/^0+/, ''); // Elimina ceros a la izquierda
+            
+            if (rut.length > 1) {
+                let body = rut.slice(0, -1);
+                let dv = rut.slice(-1).toUpperCase();
+                let formattedBody = new Intl.NumberFormat('es-CL').format(body);
+                input.value = `${formattedBody}-${dv}`;
+            } else {
+                input.value = rut;
+            }
+        }
+
+        function validateRut(rut) {
+            const regex = /^[0-9]{1,2}\.[0-9]{3}\.[0-9]{3}-[0-9kK]{1}$/;
+            return regex.test(rut);
+        }
+
+        function addClient() {
+            const nombreInput = document.getElementById('addNombre');
+            const apellidoInput = document.getElementById('addApellido');
+            const rutInput = document.getElementById('addRut');
+
+            const nombre = nombreInput.value.trim();
+            const apellido = apellidoInput.value.trim();
+            const rut = rutInput.value.trim();
+
+            if (!nombre || !apellido || !rut) {
+                showToast("Todos los campos son obligatorios.");
+                return;
+            }
+
+            if (!validateRut(rut)) {
+                showToast("El formato del RUT no es válido. Ej: 12.345.678-9");
+                return;
+            }
+
+            const clients = getClients();
+            const clientExists = clients.some(client => client.rut === rut);
+
+            if (clientExists) {
+                showToast("Un cliente con este RUT ya existe.");
+                return;
+            }
+
+            clients.push({ nombre, apellido, rut });
+            saveClients(clients);
+            renderClients();
+
+            nombreInput.value = '';
+            apellidoInput.value = '';
+            rutInput.value = '';
+        }
+
+        function deleteClient(index) {
+            const clients = getClients();
+            clients.splice(index, 1);
+            saveClients(clients);
+            renderClients();
+            showToast("Cliente eliminado.");
+        }
+
+        function exportClients() {
+            const clients = getClients();
+            if (clients.length === 0) {
+                showToast("No hay clientes para exportar.");
+                return;
+            }
+            const dataStr = JSON.stringify(clients, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'clientes.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("Clientes exportados correctamente.");
+        }
+
+        function importClients(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedClients = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedClients)) {
+                        throw new Error("El archivo JSON no es una lista válida.");
+                    }
+
+                    const currentClients = getClients();
+                    const currentRuts = new Set(currentClients.map(c => c.rut));
+                    let addedCount = 0;
+
+                    importedClients.forEach(newClient => {
+                        if (newClient.nombre && newClient.rut && !currentRuts.has(newClient.rut)) {
+                            currentClients.push(newClient);
+                            currentRuts.add(newClient.rut);
+                            addedCount++;
+                        }
+                    });
+
+                    saveClients(currentClients);
+                    renderClients();
+                    showToast(`${addedCount} cliente(s) nuevo(s) importado(s).`);
+
+                } catch (error) {
+                    showToast("Error al leer el archivo JSON. Asegúrate de que el formato sea correcto.");
+                    console.error(error);
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        document.addEventListener('DOMContentLoaded', renderClients);
+    </script>
+</body>
+</html>
+
