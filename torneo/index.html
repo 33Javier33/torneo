@@ -23,7 +23,7 @@
         }
         .container {
             width: 100%;
-            max-width: 1600px;
+            max-width: 1800px; /* Aumentado para un layout más ancho */
         }
         .card {
             background-color: white;
@@ -40,7 +40,7 @@
             width: 100%;
         }
 
-        /* --- ESTILOS PARA TARJETAS GIRATORIAS --- */
+        /* --- ESTILOS PARA TARJETAS GIRATORIAS CON NOMBRE EN DOS LÍNEAS --- */
         .participant-list {
             display: flex;
             flex-direction: column;
@@ -49,7 +49,7 @@
         }
         .flip-card {
             background-color: transparent;
-            height: 55px;
+            height: 70px; /* Aumentada la altura para dos líneas */
             perspective: 1000px;
             width: 100%;
         }
@@ -73,21 +73,20 @@
             align-items: center;
             justify-content: center;
             border-radius: 0.5rem;
-            padding: 0 1rem;
+            padding: 0.5rem 1rem;
             font-weight: 600;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
         }
         .flip-card-front {
             background-color: #f1f5f9;
             color: #1e293b;
+            flex-direction: column; /* Para poner los apellidos abajo */
+            line-height: 1.2; /* Ajuste de interlineado */
         }
         .flip-card-back {
             background-color: #2563eb;
             color: white;
             transform: rotateY(180deg);
-            font-size: 1.2rem;
+            font-size: 1.5rem;
         }
         
         /* --- ESTILOS PARA RANKING DESTACADO --- */
@@ -134,6 +133,7 @@
         .dark .text-gray-500 { color: #94a3b8; }
         .dark footer { color: #64748b; }
         .dark .flip-card-front { background-color: #334155; color: #e2e8f0; }
+        .dark .flip-card-front .text-slate-500 { color: #94a3b8; }
         .dark .flip-card-back { background-color: #60a5fa; color: #0f172a; }
         .dark .zoom-btn { background-color: #1e293b; color: #e2e8f0; border-color: #334155; }
         .dark .highlighted-rank { border-color: #fcd34d; box-shadow: 0 0 10px rgba(252, 211, 77, 0.5); }
@@ -161,14 +161,17 @@
         <div class="title-section text-center">
             <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-4">Cargando Torneo...</h1>
         </div>
-        <div class="container grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <!-- NUEVA ESTRUCTURA DE GRID: 4 columnas para un layout más horizontal -->
+        <div class="container grid grid-cols-1 lg:grid-cols-4 gap-6">
             
-            <section class="card lg:col-span-2">
+            <!-- Columna de Puntajes (ocupa 1 de 4 columnas) -->
+            <section class="card">
                 <h2 class="text-2xl font-bold mb-4">MEJORES PUNTAJES</h2>
                 <ul id="participantList" class="participant-list"></ul>
             </section>
             
-            <div class="flex flex-col gap-6">
+            <!-- Columna Central (ocupa 2 de 4 columnas) -->
+            <div class="lg:col-span-2 flex flex-col gap-6">
                 <section class="card">
                     <h2 class="text-2xl font-bold">HORA</h2>
                     <p id="tournamentDate" class="text-xl font-bold text-gray-600"></p>
@@ -191,7 +194,8 @@
                 </section>
             </div>
 
-            <section class="card lg:col-span-2">
+            <!-- Columna de Ranking (ocupa 1 de 4 columnas) -->
+            <section class="card">
                 <h2 id="rankingTitle" class="text-2xl font-bold mb-4">Ranking</h2>
                 <ol id="rankingList" class="w-full space-y-4"></ol>
             </section>
@@ -230,7 +234,6 @@
         // --- FUNCIONES DE UTILIDAD ---
         function getTournamentType() { return localStorage.getItem('selectedTournament') || 'ruleta'; }
         function getClients() { return JSON.parse(localStorage.getItem(`clientes_${getTournamentType()}`) || '[]'); }
-        function getFinalists() { return JSON.parse(localStorage.getItem(`finalistas_${getTournamentType()}`) || '[]'); }
         function formatNumber(num) { return Number(num).toLocaleString('es-CL'); }
         function getTournamentDate() {
             const dateStr = localStorage.getItem('tournamentDate');
@@ -298,11 +301,19 @@
             } else {
                 topParticipants.forEach(player => {
                     const li = document.createElement('li');
+                    
+                    const nameParts = (player.nombre || '').split(' ');
+                    const lastNameParts = (player.apellido || '').split(' ');
+
+                    const firstNames = nameParts.slice(0, 2).join(' ');
+                    const lastNames = lastNameParts.slice(0, 2).join(' ');
+
                     li.className = 'flip-card';
                     li.innerHTML = `
                         <div class="flip-card-inner">
                             <div class="flip-card-front" title="${player.nombre} ${player.apellido}">
-                                <span>${player.nombre} ${player.apellido}</span>
+                                <span class="font-bold">${firstNames}</span>
+                                <span class="text-sm text-slate-500">${lastNames}</span>
                             </div>
                             <div class="flip-card-back">
                                 <span>${formatNumber(player.totalScore)}</span>
