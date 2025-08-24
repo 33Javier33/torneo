@@ -16,14 +16,14 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding: 2rem;
+            padding: 1.5rem;
             box-sizing: border-box;
             transition: background-color 0.3s, color 0.3s, transform 0.3s ease;
             transform-origin: top center;
         }
         .container {
             width: 100%;
-            max-width: 1400px;
+            max-width: 1600px;
         }
         .card {
             background-color: white;
@@ -34,23 +34,22 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100%;
         }
         .title-section {
             margin-bottom: 2rem;
             width: 100%;
         }
 
-        /* --- ESTILOS PARA TARJETAS GIRATORIAS (UNA COLUMNA) --- */
+        /* --- ESTILOS PARA TARJETAS GIRATORIAS --- */
         .participant-list {
             display: flex;
-            flex-direction: column; /* Cambiado a columna */
+            flex-direction: column;
             gap: 0.75rem;
             width: 100%;
         }
         .flip-card {
             background-color: transparent;
-            height: 55px; /* Aumentada la altura */
+            height: 55px;
             perspective: 1000px;
             width: 100%;
         }
@@ -74,7 +73,7 @@
             align-items: center;
             justify-content: center;
             border-radius: 0.5rem;
-            padding: 0 1rem; /* Ajustado el padding horizontal */
+            padding: 0 1rem;
             font-weight: 600;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -88,7 +87,7 @@
             background-color: #2563eb;
             color: white;
             transform: rotateY(180deg);
-            font-size: 1.2rem; /* Ligeramente más grande para el puntaje */
+            font-size: 1.2rem;
         }
         
         /* --- ESTILOS PARA RANKING DESTACADO --- */
@@ -126,14 +125,12 @@
         body.dark { background-color: #0f172a; color: #e2e8f0; }
         .dark .card { background-color: #1e293b; border: 1px solid #334155; }
         .dark #tournamentTitle { color: #93c5fd; }
-        .dark #finalTournamentTitle { color: #f87171; }
         .dark #tournamentDate { color: #94a3b8; }
-        .dark #clockDisplay, .dark #finalClockDisplay { color: #60a5fa; }
+        .dark #clockDisplay { color: #60a5fa; }
         .dark .bg-slate-100 { background-color: #334155; }
         .dark .font-bold.text-slate-400 { color: #94a3b8; }
         .dark .font-semibold.text-slate-800 { color: #e2e8f0; }
         .dark .text-blue-600.bg-white { background-color: #0f172a; color: #93c5fd; }
-        .dark .text-red-600.bg-white { background-color: #0f172a; color: #f87171; }
         .dark .text-gray-500 { color: #94a3b8; }
         .dark footer { color: #64748b; }
         .dark .flip-card-front { background-color: #334155; color: #e2e8f0; }
@@ -164,14 +161,15 @@
         <div class="title-section text-center">
             <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-4">Cargando Torneo...</h1>
         </div>
-        <div class="container grid grid-cols-1 md:grid-cols-3 gap-6">
-            <section class="card">
+        <div class="container grid grid-cols-1 lg:grid-cols-5 gap-6">
+            
+            <section class="card lg:col-span-2">
                 <h2 class="text-2xl font-bold mb-4">MEJORES PUNTAJES</h2>
                 <ul id="participantList" class="participant-list"></ul>
             </section>
             
             <div class="flex flex-col gap-6">
-                <section class="card h-fit">
+                <section class="card">
                     <h2 class="text-2xl font-bold">HORA</h2>
                     <p id="tournamentDate" class="text-xl font-bold text-gray-600"></p>
                     <div id="clockDisplay" class="font-mono text-5xl font-extrabold text-blue-600 my-4">00:00:00</div>
@@ -183,7 +181,7 @@
                         </div>
                     </div>
                 </section>
-                <section class="card h-fit">
+                <section class="card">
                     <h2 class="text-2xl font-bold mb-4">PREMIOS</h2>
                     <div class="text-center">
                         <p class="text-gray-600 font-bold">POZO TOTAL</p>
@@ -193,21 +191,16 @@
                 </section>
             </div>
 
-            <section class="card">
+            <section class="card lg:col-span-2">
                 <h2 id="rankingTitle" class="text-2xl font-bold mb-4">Ranking</h2>
-                <!-- Aumentado el espacio vertical a space-y-4 -->
                 <ol id="rankingList" class="w-full space-y-4"></ol>
             </section>
         </div>
     </div>
 
-    <!-- PANTALLAS FINAL Y GANADORES -->
-    <div id="finalScreen" class="hidden w-full flex flex-col items-center">
-        <!-- ... Contenido ... -->
-    </div>
-    <div id="winnersScreen" class="hidden w-full flex flex-col items-center">
-        <!-- ... Contenido ... -->
-    </div>
+    <!-- PANTALLAS FINAL Y GANADORES (sin cambios) -->
+    <div id="finalScreen" class="hidden"></div>
+    <div id="winnersScreen" class="hidden"></div>
 
     <div class="zoom-controls">
         <button id="zoom-in" class="zoom-btn">+</button>
@@ -276,15 +269,11 @@
         // --- RENDERIZADO DE VISTAS ---
         function updateView() {
             const currentView = localStorage.getItem('tournamentView') || 'classification';
-            
             classificationScreen.style.display = 'none';
-            // ... (ocultar otras pantallas)
-
             if (currentView === 'classification') {
                 classificationScreen.style.display = 'block';
                 renderClassificationScreen();
-            } 
-            // ... (mostrar otras vistas)
+            }
         }
 
         function renderClassificationScreen() {
@@ -299,14 +288,12 @@
             if (!tournament) return;
 
             document.getElementById('tournamentTitle').textContent = tournament.name;
-
             const uniquePlayers = getBestEntryPerPlayer(allEntries, tournamentType);
             const sortedByScore = getSortedClients(uniquePlayers);
             
             // RENDERIZAR TARJETAS GIRATORIAS (TOP 10)
             const topParticipants = sortedByScore.slice(0, 10);
             if (topParticipants.length === 0) {
-                // Removido col-span-2 para ajustarse a una columna
                 participantList.innerHTML = '<li class="text-gray-500 italic">Aún no hay participantes.</li>';
             } else {
                 topParticipants.forEach(player => {
@@ -336,14 +323,12 @@
             const topRankedClients = sortedByScore.slice(0, 10);
             const highlightCount = tournament.playersPerTable;
             document.getElementById('rankingTitle').textContent = `Ranking (Top ${highlightCount} clasifican)`;
-
             if (topRankedClients.length === 0) {
                 rankingList.innerHTML = '<li class="text-gray-500 italic">El ranking se mostrará aquí.</li>';
             } else {
                 topRankedClients.forEach((client, index) => {
                     const li = document.createElement('li');
                     const isHighlighted = index < highlightCount;
-                    // Aumentado el padding a p-4
                     li.className = `bg-slate-100 p-4 rounded-lg flex justify-between items-center ${isHighlighted ? 'highlighted-rank' : ''}`;
                     li.innerHTML = `
                         <div class="flex items-center">
@@ -355,16 +340,58 @@
                 });
             }
             
-            // Renderizar premios (sin cambios)
-            // ...
+            // RENDERIZAR PREMIOS
+            const prizePool = parseInt(localStorage.getItem('prizePool') || '0');
+            document.getElementById('totalPrize').textContent = `$${formatNumber(prizePool)}`;
+            const prizeDistributionDiv = document.getElementById('prizeDistribution');
+            prizeDistributionDiv.innerHTML = '';
+            if (prizePool > 0) {
+                const prizes = [
+                    { label: '1er Lugar (50%)', amount: prizePool * 0.5, color: 'text-yellow-500' },
+                    { label: '2do Lugar (30%)', amount: prizePool * 0.3, color: 'text-gray-500' },
+                    { label: '3er Lugar (20%)', amount: prizePool * 0.2, color: 'text-amber-700' }
+                ];
+                prizes.forEach(prize => {
+                    const p = document.createElement('p');
+                    p.className = `font-semibold flex justify-between w-full`;
+                    p.innerHTML = `<span>${prize.label}</span> <span class="${prize.color} font-bold">$${formatNumber(prize.amount)}</span>`;
+                    prizeDistributionDiv.appendChild(p);
+                });
+            } else {
+                prizeDistributionDiv.innerHTML = '<p class="text-gray-400 italic">No se ha definido un pozo.</p>';
+            }
         }
         
-        // --- FUNCIÓN DEL RELOJ ---
+        // --- FUNCIONES DE RELOJ Y ESTADO ---
         function updateClock() {
             const now = new Date();
             const timeString = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            if (document.getElementById('clockDisplay')) document.getElementById('clockDisplay').textContent = timeString;
-            if (document.getElementById('finalClockDisplay')) document.getElementById('finalClockDisplay').textContent = timeString;
+            document.getElementById('clockDisplay').textContent = timeString;
+        }
+
+        function checkRegistrationStatus() {
+            const endTimeString = localStorage.getItem('registrationEndTime');
+            const statusContainer = document.getElementById('registration-status');
+            const endTimeDisplay = document.getElementById('endTimeDisplay');
+            const warningMessage = document.getElementById('warningMessage');
+
+            if (!endTimeString) {
+                statusContainer.classList.add('hidden');
+                return;
+            }
+            
+            statusContainer.classList.remove('hidden');
+            const [hours, minutes] = endTimeString.split(':');
+            const now = new Date();
+            const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+            const minutesRemaining = (endTime.getTime() - now.getTime()) / 60000;
+
+            endTimeDisplay.textContent = `Cierre de inscripciones a las ${endTimeString} hrs.`;
+            if (minutesRemaining > 0 && minutesRemaining <= 20) {
+                warningMessage.classList.remove('hidden');
+            } else {
+                warningMessage.classList.add('hidden');
+            }
         }
 
         // --- INICIALIZACIÓN Y EVENTOS ---
@@ -392,11 +419,13 @@
             document.getElementById('tournamentDate').textContent = getTournamentDate();
             
             updateView();
-            updateClock();
-            setInterval(updateClock, 1000);
+            setInterval(() => {
+                updateClock();
+                checkRegistrationStatus();
+            }, 1000);
 
             window.addEventListener('storage', (event) => {
-                if (event.key.startsWith('clientes_') || event.key.startsWith('finalistas_') || event.key === 'tournamentView' || event.key === 'prizePool' || event.key === 'selectedTournament') {
+                if (event.key.startsWith('clientes_') || event.key === 'tournamentView' || event.key === 'prizePool' || event.key === 'selectedTournament' || event.key === 'registrationEndTime') {
                     updateView();
                 }
                 if (event.key === 'tournamentDate') {
@@ -407,3 +436,4 @@
     </script>
 </body>
 </html>
+
