@@ -535,13 +535,13 @@
             localStorage.setItem('tournament_view_state', 'final'); 
             showToast("Mesa final generada.", true); 
             showFinalView();
-            await exportToPDF({ isFinalReport: false }); // Generar PDF de finalistas
+            await exportToPDF({ isFinalReport: false });
         }
 
         async function declareWinners() { 
             localStorage.setItem('tournament_view_state', 'winners');
             showWinnersView(); 
-            await exportToPDF({ isFinalReport: true }); // Generar PDF final
+            await exportToPDF({ isFinalReport: true });
         }
         function saveFinalists(type, finalists) { localStorage.setItem(`finalistas_${type}`, JSON.stringify(finalists)); }
 
@@ -602,7 +602,7 @@
             }
         }
 
-        // --- EXPORTACIÓN Y ORDENAMIENTO (ACTUALIZADO) ---
+        // --- EXPORTACIÓN Y ORDENAMIENTO ---
         async function exportToPDF(options = { isFinalReport: false }) {
             try {
                 const { PDFDocument, rgb, StandardFonts } = PDFLib;
@@ -620,11 +620,9 @@
                 const formattedDate = `${day}/${month}/${year}`;
                 let y = height - 50;
 
-                // Título y Fecha
                 page.drawText(tournament.name, { x: 50, y, font: fontBold, size: 24 }); y -= 20;
                 page.drawText(`Fecha: ${formattedDate}`, { x: 50, y, font: font, size: 12 }); y -= 40;
 
-                // Resumen de Entradas
                 page.drawText('Resumen de Entradas', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
                 const torneoCount = clients.filter(c => c.cuponTorneo).length;
                 const canjeoCount = clients.filter(c => c.cuponCanjeo).length;
@@ -632,7 +630,6 @@
                 page.drawText(`- Cupones Torneo: ${torneoCount}`, { x: 60, y, font, size: 11 }); y -= 15;
                 page.drawText(`- Cupones Canjeo: ${canjeoCount}`, { x: 60, y, font, size: 11 }); y -= 30;
 
-                // Tabla de Puntajes
                 page.drawText('Tabla de Clasificación', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
                 const isRoulette = tournament.type === 'roulette';
                 const headers = ['#', 'Cliente', 'RUT', ...(isRoulette ? ['Color'] : []), 'Cupón', ...rounds, 'Total'];
@@ -643,7 +640,7 @@
                 page.drawLine({ start: { x: 50, y: y + 5 }, end: { x: width - 50, y: y + 5 }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
 
                 clients.forEach((client, index) => {
-                    if (y < 40) { page = doc.addPage(); y = height - 50; /* Redibujar cabecera en nueva página */ }
+                    if (y < 40) { page = doc.addPage(); y = height - 50; }
                     let cuponText = client.cuponTorneo ? 'Torneo' : (client.cuponCanjeo ? 'Canjeo' : 'Ninguno');
                     const rowData = [`${index + 1}`, `${client.nombre} ${client.apellido}`, client.rut];
                     if(isRoulette) rowData.push(' ');
@@ -665,7 +662,6 @@
                     y -= 15;
                 });
 
-                // Sección de Finalistas
                 const finalists = getFinalists(tournamentType);
                 if (finalists.length > 0) {
                     if (y < 150) { page = doc.addPage(); y = height - 50; }
@@ -678,13 +674,13 @@
                     });
                 }
 
-                // Sección de Ganadores
                 if (localStorage.getItem('tournament_view_state') === 'winners') {
                     if (y < 150) { page = doc.addPage(); y = height - 50; }
                     const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
                     const prizeConfig = [prizes.first || '0', prizes.second || '0', prizes.third || '0'];
                     y -= 30;
-                    page.drawText('🏆 Podio de Ganadores', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
+                    // *** CORRECCIÓN: Se elimina el emoji del trofeo ***
+                    page.drawText('Podio de Ganadores', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
                     const sortedFinalists = finalists.sort((a,b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
                     for (let i = 0; i < 3; i++) {
                         if (sortedFinalists[i]) {
