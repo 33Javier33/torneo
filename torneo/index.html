@@ -164,7 +164,7 @@
             color: #e2e8f0;
         }
 
-        /* --- NUEVOS ESTILOS PARA MESA FINAL Y GANADORES --- */
+        /* --- ESTILOS PARA MESA FINAL Y GANADORES --- */
         .highlight-gold { background-color: #fef9c3 !important; }
         .dark .highlight-gold { background-color: #78350f !important; }
         .highlight-silver { background-color: #f1f5f9 !important; }
@@ -202,6 +202,10 @@
             <div class="slider round"></div>
         </label>
     </div>
+    
+    <!-- === ENLACE MOVIDO A LA DERECHA === -->
+    <a href="https://torneo-flax.vercel.app/" class="fixed top-12 right-4 text-xs text-gray-400 hover:text-blue-500 transition-colors z-50">Ir a Planilla →</a>
+    <!-- =================================== -->
 
     <!-- Vista de Clasificación (la que ya existe) -->
     <div id="classificationView" class="container">
@@ -233,7 +237,7 @@
         </div>
     </div>
 
-    <!-- NUEVA: Vista de Mesa Final -->
+    <!-- Vista de Mesa Final -->
     <div id="finalView" class="container" style="display: none;">
         <div class="title-section">
             <h1 class="text-4xl md:text-5xl font-extrabold text-red-700 dark:text-red-500 mb-2">Mesa Final</h1>
@@ -249,7 +253,7 @@
         </div>
     </div>
 
-    <!-- NUEVA: Vista de Ganadores -->
+    <!-- Vista de Ganadores -->
     <div id="winnersView" class="container" style="display: none;">
         <div class="title-section">
             <h1 class="text-4xl md:text-5xl font-extrabold text-amber-500 dark:text-amber-400 mb-2">🏆 GANADORES DEL TORNEO 🏆</h1>
@@ -283,12 +287,10 @@
         function updateActiveView() {
             const viewState = localStorage.getItem('tournament_view_state') || 'classification';
             
-            // Ocultar todas las vistas primero
             document.getElementById('classificationView').style.display = 'none';
             document.getElementById('finalView').style.display = 'none';
             document.getElementById('winnersView').style.display = 'none';
 
-            // Mostrar la vista correcta y renderizar su contenido
             switch (viewState) {
                 case 'final':
                     document.getElementById('finalView').style.display = 'block';
@@ -321,20 +323,16 @@
             ];
             
             const currentView = views[prizeViewIndex];
-
             contentEl.classList.add('prize-exiting');
-
             setTimeout(() => {
                 contentEl.innerHTML = `
                     <h2 class="text-lg font-bold text-gray-600 dark:text-gray-400">${currentView.title}</h2>
                     <p class="text-4xl font-extrabold mt-1 ${currentView.color}">${currentView.value}</p>
                 `;
             }, 300); 
-
             setTimeout(() => {
                  contentEl.classList.remove('prize-exiting');
             }, 350);
-
             prizeViewIndex = (prizeViewIndex + 1) % views.length;
         }
         
@@ -387,11 +385,7 @@
             const clients = getClients();
             const tournament = TOURNAMENTS[tournamentType];
             const rounds = getTournamentRounds(tournamentType);
-
-            if (!tournament) {
-                console.error("Tipo de torneo no válido:", tournamentType);
-                return;
-            }
+            if (!tournament) return;
 
             document.getElementById('tournamentTitle').textContent = tournament.name;
             document.getElementById('tournamentDate').textContent = getTournamentDate();
@@ -433,11 +427,9 @@
             tableBody.innerHTML = bodyHTML;
         }
 
-        // --- NUEVA FUNCIÓN PARA RENDERIZAR LA MESA FINAL ---
         function renderFinalTable() {
             const tournamentType = getTournamentType();
             const finalists = JSON.parse(localStorage.getItem(`finalistas_${tournamentType}`) || '[]');
-            const tournament = TOURNAMENTS[tournamentType];
             const rounds = getTournamentRounds(tournamentType);
 
             const tableHeader = document.getElementById('finalTableHeader');
@@ -472,7 +464,6 @@
             tableBody.innerHTML = bodyHTML;
         }
 
-        // --- NUEVA FUNCIÓN PARA RENDERIZAR EL PODIO DE GANADORES ---
         function renderWinnersPodium() {
             const tournamentType = getTournamentType();
             const finalists = JSON.parse(localStorage.getItem(`finalistas_${tournamentType}`) || '[]');
@@ -482,7 +473,7 @@
                 .sort((a, b) => b.totalScore - a.totalScore);
 
             const podiumContainer = document.getElementById('winnersPodium');
-            podiumContainer.innerHTML = ''; // Limpiar
+            podiumContainer.innerHTML = '';
 
             const prizeConfig = [
                 { prize: prizes.first || 0, label: '1er Lugar', emoji: '🥇' },
@@ -504,7 +495,6 @@
                 }
             }
         }
-
 
         function checkRegistrationStatus() {
             const endTimeString = localStorage.getItem('registrationEndTime');
@@ -550,7 +540,7 @@
             }
             themeSwitch.addEventListener('change', (e) => toggleDarkMode(e.target.checked));
 
-            updateActiveView(); // <-- CAMBIO: Llamada a la función controladora
+            updateActiveView();
             checkRegistrationStatus();
             updateClock();
             
@@ -561,11 +551,8 @@
             setInterval(updateClock, 1000);
 
             window.addEventListener('storage', (event) => {
-                // Se simplifica la condición para que cualquier cambio relevante actualice la vista
                 if (event.key.startsWith('clientes_') || event.key.startsWith('finalistas_') || ['tournamentPrizes', 'prizePool', 'selectedTournament', 'registrationEndTime', 'tournamentDate', 'rouletteBallCount', 'tournament_view_state'].includes(event.key)) {
-                    updateActiveView(); // <-- CAMBIO: Llamada a la función controladora
-                    
-                    // Reiniciar el carrusel de premios solo si cambia la información de premios
+                    updateActiveView();
                     if (['tournamentPrizes', 'prizePool'].includes(event.key)) {
                         clearInterval(prizeInterval);
                         prizeViewIndex = 0;
