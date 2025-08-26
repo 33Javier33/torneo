@@ -26,7 +26,7 @@
         }
         .card {
             background-color: white;
-            padding: 1.5rem;
+            padding: 1rem;
             border-radius: 1rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
@@ -34,10 +34,8 @@
             margin-bottom: 1.5rem;
             text-align: center;
         }
-
-        /* --- ESTILOS PARA LA TABLA --- */
         .table-container {
-            overflow-x: auto; /* Permite scroll horizontal en pantallas pequeñas */
+            overflow-x: auto;
         }
         table {
             width: 100%;
@@ -78,7 +76,53 @@
             color: #64748b;
         }
 
-        /* --- MODO OSCURO --- */
+        /* --- ESTILOS PARA TARJETA GIRATORIA --- */
+        #prize-card-container {
+            perspective: 1000px;
+            min-height: 105px;
+        }
+        #prize-card-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s, opacity 0.5s;
+            transform-style: preserve-3d;
+        }
+        .prize-exiting {
+            transform: rotateY(180deg);
+        }
+
+        /* --- ESTILOS PARA HIGHLIGHT DE TARJETA INSCRIPCIONES --- */
+        #registration-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .highlighting {
+            animation: pulse-highlight 2s ease-in-out;
+        }
+        .dark .highlighting {
+            animation-name: pulse-highlight-dark;
+        }
+        @keyframes pulse-highlight {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            }
+            50% {
+                transform: scale(1.03);
+                box-shadow: 0 0 25px rgba(59, 130, 246, 0.4);
+            }
+        }
+        @keyframes pulse-highlight-dark {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: none; 
+            }
+            50% {
+                transform: scale(1.03);
+                box-shadow: 0 0 25px rgba(96, 165, 250, 0.5);
+            }
+        }
+
         body.dark { background-color: #0f172a; color: #e2e8f0; }
         .dark .card { background-color: #1e293b; border: 1px solid #334155; }
         .dark #tournamentTitle { color: #93c5fd; }
@@ -92,7 +136,6 @@
         .dark td.total-score { color: #60a5fa; }
         .dark td.rank { color: #94a3b8; }
 
-        /* --- INTERRUPTOR DE TEMA --- */
         .theme-switch-wrapper { position: fixed; top: 1rem; right: 1rem; z-index: 100; }
         .theme-switch { display: inline-block; height: 34px; position: relative; width: 60px; }
         .theme-switch input { display:none; }
@@ -100,9 +143,31 @@
         .slider:before { background-color: #fff; bottom: 4px; content: ""; height: 26px; left: 4px; position: absolute; transition: .4s; width: 26px; border-radius: 50%; }
         input:checked + .slider { background-color: #2196F3; }
         input:checked + .slider:before { transform: translateX(26px); }
+
+        .clock {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 100;
+            font-family: 'monospace';
+            font-size: 1.5rem;
+            font-weight: 700;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.8);
+            color: #1e293b;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .dark .clock {
+            background-color: rgba(30, 41, 59, 0.8);
+            color: #e2e8f0;
+        }
     </style>
 </head>
 <body>
+
+    <div id="clock" class="clock">00:00:00</div>
 
     <div class="theme-switch-wrapper">
         <label class="theme-switch" for="checkbox">
@@ -117,13 +182,12 @@
             <p id="tournamentDate" class="text-xl font-bold text-gray-600"></p>
         </div>
 
-        <!-- Info Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="card text-center">
-                <h2 class="text-lg font-bold text-gray-600">POZO TOTAL</h2>
-                <p id="totalPrize" class="text-4xl font-extrabold text-green-600">$0</p>
+            <div id="prize-card-container" class="card text-center">
+                <div id="prize-card-content">
+                    </div>
             </div>
-            <div class="card text-center">
+            <div id="registration-card" class="card text-center">
                 <h2 class="text-lg font-bold text-gray-600">INSCRIPCIONES</h2>
                 <p id="endTimeDisplay" class="font-bold text-lg"></p>
                 <div id="warningMessage" class="hidden">
@@ -132,16 +196,11 @@
             </div>
         </div>
 
-        <!-- Tabla de Puntajes -->
         <div class="card">
             <div class="table-container">
                 <table>
-                    <thead id="tableHeader">
-                        <!-- Las cabeceras se generarán dinámicamente -->
-                    </thead>
-                    <tbody id="tableBody">
-                        <!-- Las filas de los jugadores se generarán dinámicamente -->
-                    </tbody>
+                    <thead id="tableHeader"></thead>
+                    <tbody id="tableBody"></tbody>
                 </table>
             </div>
         </div>
@@ -155,15 +214,79 @@
         const themeSwitch = document.getElementById('checkbox');
 
         const TOURNAMENTS = {
-            ruleta: { name: 'Torneo de Ruleta', rounds: ['Bolita 1', 'Bolita 2', 'Bolita 3'] },
+            ruleta: { name: 'Torneo de Ruleta', type: 'roulette' },
             draw_poker: { name: 'Torneo de Draw Poker', rounds: ['Puntaje'] },
             blackjack: { name: 'Torneo de Blackjack', rounds: ['Puntaje'] },
-            ruleta_vip: { name: 'Torneo de Ruleta VIP', rounds: ['Bolita 1', 'Bolita 2', 'Bolita 3'] },
+            ruleta_vip: { name: 'Torneo de Ruleta VIP', type: 'roulette' },
             draw_poker_vip: { name: 'Torneo de Draw Poker VIP', rounds: ['Puntaje'] },
             blackjack_vip: { name: 'Torneo de Blackjack VIP', rounds: ['Puntaje'] }
         };
 
-        // --- FUNCIONES DE UTILIDAD ---
+        let prizeViewIndex = 0;
+        let prizeInterval;
+
+        function updatePrizeCard() {
+            const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
+            const prizePool = parseInt(localStorage.getItem('prizePool') || '0');
+            const contentEl = document.getElementById('prize-card-content');
+            
+            if (!contentEl) return;
+
+            const views = [
+                { title: 'POZO TOTAL', value: `$${formatNumber(prizePool)}`, color: 'text-blue-600 dark:text-blue-400' },
+                { title: '🥉 3er Puesto', value: `$${formatNumber(prizes.third || 0)}`, color: 'text-amber-600 dark:text-amber-500' },
+                { title: '🥈 2do Puesto', value: `$${formatNumber(prizes.second || 0)}`, color: 'text-slate-500 dark:text-slate-400' },
+                { title: '🥇 1er Puesto', value: `$${formatNumber(prizes.first || 0)}`, color: 'text-amber-400 dark:text-amber-300' }
+            ];
+            
+            const currentView = views[prizeViewIndex];
+
+            contentEl.classList.add('prize-exiting');
+
+            setTimeout(() => {
+                contentEl.innerHTML = `
+                    <h2 class="text-lg font-bold text-gray-600 dark:text-gray-400">${currentView.title}</h2>
+                    <p class="text-4xl font-extrabold mt-1 ${currentView.color}">${currentView.value}</p>
+                `;
+            }, 300); 
+
+            setTimeout(() => {
+                 contentEl.classList.remove('prize-exiting');
+            }, 350);
+
+            prizeViewIndex = (prizeViewIndex + 1) % views.length;
+        }
+        
+        // --- NUEVA FUNCIÓN PARA FORMATEAR NOMBRES ---
+        function formatPlayerName(nombre, apellido) {
+            if (!nombre || !apellido) return ''; // Maneja casos con datos faltantes
+
+            // Divide los nombres y apellidos, y filtra partes vacías por si hay dobles espacios
+            const nombreParts = nombre.trim().split(' ').filter(n => n); 
+            const apellidoParts = apellido.trim().split(' ').filter(a => a);
+
+            let formattedNombre = nombreParts[0] || '';
+            if (nombreParts.length > 1) {
+                formattedNombre += ` ${nombreParts[1].charAt(0)}.`;
+            }
+
+            let formattedApellido = apellidoParts[0] || '';
+            if (apellidoParts.length > 1) {
+                formattedApellido += ` ${apellidoParts[1].charAt(0)}.`;
+            }
+            
+            return `${formattedNombre} ${formattedApellido}`.trim();
+        }
+
+        function getTournamentRounds(tournamentType) {
+            const tournament = TOURNAMENTS[tournamentType];
+            if (tournament.type === 'roulette') {
+                const ballCount = parseInt(localStorage.getItem('rouletteBallCount') || '3');
+                return Array.from({ length: ballCount }, (_, i) => `Bolita ${i + 1}`);
+            }
+            return tournament.rounds;
+        }
+
         function getTournamentType() { return localStorage.getItem('selectedTournament') || 'ruleta'; }
         function getClients() { return JSON.parse(localStorage.getItem(`clientes_${getTournamentType()}`) || '[]'); }
         function formatNumber(num) { return Number(num).toLocaleString('es-CL'); }
@@ -174,56 +297,47 @@
             return `${day}/${month}/${year}`;
         }
 
-        // --- LÓGICA DE CÁLCULO Y ORDENAMIENTO ---
         function calculateTotal(client, tournamentType) {
             const cleanValue = (val) => parseInt(String(val || '0').replace(/\./g, ''));
-            const tournament = TOURNAMENTS[tournamentType];
-            if (!tournament) return 0;
-            return tournament.rounds.reduce((total, round) => {
+            const rounds = getTournamentRounds(tournamentType);
+            if (!rounds) return 0;
+            return rounds.reduce((total, round) => {
                 const scoreKey = round.toLowerCase().replace(/ /g, '');
                 return total + cleanValue(client[scoreKey]);
             }, 0);
         }
 
-        // --- RENDERIZADO DE LA VISTA DE TABLA ---
         function renderTournamentTable() {
             const tournamentType = getTournamentType();
             const clients = getClients();
             const tournament = TOURNAMENTS[tournamentType];
+            const rounds = getTournamentRounds(tournamentType);
 
             if (!tournament) {
                 console.error("Tipo de torneo no válido:", tournamentType);
                 return;
             }
 
-            // Actualizar Título y Fecha
             document.getElementById('tournamentTitle').textContent = tournament.name;
             document.getElementById('tournamentDate').textContent = getTournamentDate();
 
-            // Actualizar Premios
-            const prizePool = parseInt(localStorage.getItem('prizePool') || '0');
-            document.getElementById('totalPrize').textContent = `$${formatNumber(prizePool)}`;
-
-            // Generar Cabeceras de la Tabla
             const tableHeader = document.getElementById('tableHeader');
             let headerHTML = '<tr><th class="w-12">#</th><th>Jugador</th>';
-            tournament.rounds.forEach(round => {
+            rounds.forEach(round => {
                 headerHTML += `<th class="text-right">${round}</th>`;
             });
             headerHTML += '<th class="text-right">Total</th></tr>';
             tableHeader.innerHTML = headerHTML;
 
-            // Procesar y ordenar jugadores
             const playersWithScores = clients.map(client => ({
                 ...client,
                 totalScore: calculateTotal(client, tournamentType)
             }));
             playersWithScores.sort((a, b) => b.totalScore - a.totalScore);
 
-            // Generar Filas de la Tabla
             const tableBody = document.getElementById('tableBody');
             if (playersWithScores.length === 0) {
-                const colSpan = tournament.rounds.length + 3;
+                const colSpan = rounds.length + 3;
                 tableBody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center italic py-8">Aún no hay jugadores registrados.</td></tr>`;
                 return;
             }
@@ -232,8 +346,9 @@
             playersWithScores.forEach((player, index) => {
                 bodyHTML += '<tr>';
                 bodyHTML += `<td class="rank">${index + 1}</td>`;
-                bodyHTML += `<td class="font-bold">${player.nombre || ''} ${player.apellido || ''}</td>`;
-                tournament.rounds.forEach(round => {
+                // --- CAMBIO APLICADO AQUÍ ---
+                bodyHTML += `<td class="font-bold">${formatPlayerName(player.nombre, player.apellido)}</td>`;
+                rounds.forEach(round => {
                     const scoreKey = round.toLowerCase().replace(/ /g, '');
                     const score = player[scoreKey] || 0;
                     bodyHTML += `<td class="score">${formatNumber(score)}</td>`;
@@ -268,9 +383,15 @@
             }
         }
 
-        // --- INICIALIZACIÓN Y EVENTOS ---
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            // Lógica del modo oscuro
             function toggleDarkMode(isDark) {
                 document.body.classList.toggle('dark', isDark);
                 localStorage.setItem('theme', isDark ? 'dark' : 'light');
@@ -282,21 +403,40 @@
             }
             themeSwitch.addEventListener('change', (e) => toggleDarkMode(e.target.checked));
 
-            // Renderizado inicial y configuración de intervalos
             renderTournamentTable();
             checkRegistrationStatus();
-            setInterval(checkRegistrationStatus, 1000 * 30); // Chequear cada 30 segundos
+            updateClock();
+            
+            updatePrizeCard();
+            prizeInterval = setInterval(updatePrizeCard, 4000);
 
-            // Escuchar cambios en localStorage para actualizar la vista en tiempo real
+            setInterval(checkRegistrationStatus, 1000 * 30);
+            setInterval(updateClock, 1000);
+
             window.addEventListener('storage', (event) => {
-                // Si cambia cualquier dato relevante, volver a renderizar todo
-                if (event.key.startsWith('clientes_') || ['prizePool', 'selectedTournament', 'registrationEndTime', 'tournamentDate'].includes(event.key)) {
+                if (event.key.startsWith('clientes_') || ['tournamentPrizes', 'prizePool', 'selectedTournament', 'registrationEndTime', 'tournamentDate', 'rouletteBallCount'].includes(event.key)) {
                     renderTournamentTable();
                     checkRegistrationStatus();
+                    clearInterval(prizeInterval);
+                    prizeViewIndex = 0;
+                    updatePrizeCard();
+                    prizeInterval = setInterval(updatePrizeCard, 4000);
                 }
             });
+
+            const regCard = document.getElementById('registration-card');
+            if (regCard) {
+                setInterval(() => {
+                    if (!regCard.classList.contains('highlighting')) {
+                        regCard.classList.add('highlighting');
+                    }
+                }, 10000);
+
+                regCard.addEventListener('animationend', () => {
+                    regCard.classList.remove('highlighting');
+                });
+            }
         });
     </script>
 </body>
 </html>
-
