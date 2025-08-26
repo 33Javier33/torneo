@@ -439,9 +439,27 @@
 
         // --- LÓGICA DE VISTAS (Clasificación, Final, Ganadores) ---
         const classificationView = document.getElementById('classificationView'), finalView = document.getElementById('finalView'), winnersView = document.getElementById('winnersView');
-        function showClassificationView() { classificationView.style.display = 'block'; finalView.style.display = 'none'; winnersView.style.display = 'none'; }
-        function showFinalView() { classificationView.style.display = 'none'; finalView.style.display = 'block'; winnersView.style.display = 'none'; renderFinalists(); }
-        function showWinnersView() { classificationView.style.display = 'none'; finalView.style.display = 'none'; winnersView.style.display = 'block'; renderWinners(); }
+        
+        function showClassificationView() { 
+            classificationView.style.display = 'block'; 
+            finalView.style.display = 'none'; 
+            winnersView.style.display = 'none'; 
+            localStorage.setItem('tournament_view_state', 'classification');
+        }
+        function showFinalView() { 
+            classificationView.style.display = 'none'; 
+            finalView.style.display = 'block'; 
+            winnersView.style.display = 'none'; 
+            localStorage.setItem('tournament_view_state', 'final');
+            renderFinalists(); 
+        }
+        function showWinnersView() { 
+            classificationView.style.display = 'none'; 
+            finalView.style.display = 'none'; 
+            winnersView.style.display = 'block'; 
+            localStorage.setItem('tournament_view_state', 'winners');
+            renderWinners(); 
+        }
 
         // --- LÓGICA DE MESA FINAL Y GANADORES ---
         function startFinal() {
@@ -452,10 +470,19 @@
             if (bestEntries.length < rankingSize) { showToast(`Se necesitan ${rankingSize} jugadores únicos.`); return; }
             const finalists = bestEntries.sort((a,b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType)).slice(0, rankingSize);
             localStorage.setItem(`finalistas_${tournamentType}`, JSON.stringify(finalists));
-            showToast("Mesa final generada.", true); showFinalView();
+            
+            // *** CAMBIO: Avisar que estamos en la vista final ***
+            localStorage.setItem('tournament_view_state', 'final'); 
+
+            showToast("Mesa final generada.", true); 
+            showFinalView();
         }
 
-        function declareWinners() { showWinnersView(); }
+        function declareWinners() { 
+            // *** CAMBIO: Avisar que estamos en la vista de ganadores ***
+            localStorage.setItem('tournament_view_state', 'winners');
+            showWinnersView(); 
+        }
         function saveFinalists(type, finalists) { localStorage.setItem(`finalistas_${type}`, JSON.stringify(finalists)); }
 
         function renderFinalists() {
@@ -675,8 +702,13 @@
             const tournamentType = document.getElementById('tournamentSelector').value;
             localStorage.setItem('selectedTournament', tournamentType);
             document.getElementById('rouletteConfig').classList.toggle('hidden', TOURNAMENTS[tournamentType].type !== 'roulette');
-            selectedIndices = []; showClassificationView();
-            renderClients(tournamentType); initializeSortable();
+            selectedIndices = []; 
+            
+            // *** CAMBIO: Al cambiar de torneo, siempre volvemos a la vista de clasificación ***
+            showClassificationView();
+            
+            renderClients(tournamentType); 
+            initializeSortable();
         }
         
         // --- EVENT LISTENERS Y CARGA INICIAL ---
@@ -735,6 +767,10 @@
             formatPrizePool(document.getElementById('thirdPrize'));
             document.getElementById('registrationEndTime').value = localStorage.getItem('registrationEndTime') || '';
             document.getElementById('rouletteBallCount').value = localStorage.getItem('rouletteBallCount') || '3';
+            
+            // *** CAMBIO: Asegurarse de que al cargar, la vista sea la de clasificación ***
+            localStorage.setItem('tournament_view_state', 'classification');
+            
             changeTournament();
         });
     </script>
