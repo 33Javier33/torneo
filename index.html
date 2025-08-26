@@ -18,9 +18,13 @@
             background-color: #f0f4f8; 
             color: #1e293b; 
         }
-        .container { width: 100%; max-width: 1200px; margin: auto; }
+        .container { width: 100%; max-width: 1400px; margin: auto; }
         .modal-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 50; }
-        .modal-content { background-color: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); max-width: 90%; width: 400px; }
+        .modal-content { 
+            background-color: white; padding: 2rem; border-radius: 1rem; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); max-width: 90%; 
+            width: 500px; position: relative; max-height: 90vh; overflow-y: auto;
+        }
         .close-btn { position: absolute; top: 1rem; right: 1.5rem; font-size: 2rem; color: #94a3b8; cursor: pointer; }
         .header-nav { position: fixed; top: 0; left: 0; width: 100%; display: flex; justify-content: flex-end; padding: 1rem; gap: 1rem; z-index: 20; background-color: #f0f4f8; }
         .toast { visibility: hidden; min-width: 250px; background-color: #c81e1e; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 100; left: 50%; transform: translateX(-50%); bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: all 0.5s ease-out; }
@@ -29,71 +33,106 @@
         .player-row.selected { background-color: #bae6fd !important; color: #0c4a6e; cursor: grab; }
         .player-row.selected:active { cursor: grabbing; }
         .sortable-ghost { opacity: 0.4; background: #e0f2fe; }
+
+        .score-input {
+            border: 1px solid #d1d5db; border-radius: 6px; padding: 4px; width: 100%;
+            background-color: #f9fafb; text-align: center;
+        }
+        .score-input:focus {
+            outline: 2px solid #3b82f6; border-color: transparent; background-color: white;
+        }
+        
+        .color-palette { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+        .color-swatch {
+            width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+            border: 2px solid #e5e7eb; transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .color-swatch:hover { transform: scale(1.15); }
+        .color-swatch.selected-color {
+            border-color: #1e293b; box-shadow: 0 0 0 2px white, 0 0 0 4px #1e293b;
+        }
     </style>
 </head>
 <body class="flex flex-col items-center p-4 md:p-8 min-h-screen pt-20">
 
+    <!-- Modals -->
     <div id="rutModal" class="modal-container"><div id="modalContent" class="modal-content"></div></div>
+    
     <div id="editModal" class="modal-container">
         <div class="modal-content">
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
             <h2 class="text-xl font-bold mb-4">Editar Participante</h2>
             <input type="hidden" id="editIndex">
-            
-            <div class="mb-4">
-                <label class="block font-bold mb-1">Nombre:</label>
-                <p id="editNombre" class="p-2 bg-gray-100 rounded"></p>
-            </div>
-            <div class="mb-4">
-                <label class="block font-bold mb-1">RUT:</label>
-                <p id="editRut" class="p-2 bg-gray-100 rounded"></p>
-            </div>
+            <div class="mb-4"><label class="block font-bold mb-1">Nombre:</label><p id="editNombre" class="p-2 bg-gray-100 rounded"></p></div>
+            <div class="mb-4"><label class="block font-bold mb-1">RUT:</label><p id="editRut" class="p-2 bg-gray-100 rounded"></p></div>
             <div class="mb-4">
                 <label for="editTipoCupon" class="block font-bold mb-1">Tipo de Cupón:</label>
                 <select id="editTipoCupon" class="w-full p-2 border rounded-md">
-                    <option value="ninguno">Ninguno</option>
-                    <option value="torneo">Cupón Torneo</option>
-                    <option value="canjeo">Cupón Canjeo</option>
+                    <option value="ninguno">Ninguno</option><option value="torneo">Cupón Torneo</option><option value="canjeo">Cupón Canjeo</option>
                 </select>
             </div>
             <button onclick="saveClientChanges()" class="w-full bg-blue-600 text-white py-2 rounded-md font-bold hover:bg-blue-700 transition-colors">Guardar Cambios</button>
         </div>
     </div>
+
+    <div id="configModal" class="modal-container">
+        <div class="modal-content" style="width: 800px; max-width: 95%;">
+            <span class="close-btn" onclick="closeConfigModal()">&times;</span>
+            <h2 class="text-2xl font-bold mb-6 text-blue-900 border-b pb-2">Configuración del Torneo</h2>
+            <div id="statsContainer" class="mb-6 p-4 bg-blue-50 rounded-lg flex flex-col sm:flex-row justify-around text-center gap-4">
+                <div><h3 class="font-bold text-gray-600">Total Entradas</h3><p id="totalCount" class="text-2xl font-extrabold text-blue-800">0</p></div>
+                <div><h3 class="font-bold text-gray-600">Cupones Torneo</h3><p id="torneoCount" class="text-2xl font-extrabold text-green-600">0</p></div>
+                <div><h3 class="font-bold text-gray-600">Cupones Canjeo</h3><p id="canjeoCount" class="text-2xl font-extrabold text-indigo-600">0</p></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div><label for="tournamentSelector" class="block font-bold text-lg mb-2">Seleccionar Torneo:</label><select id="tournamentSelector" onchange="changeTournament()" class="p-2 border rounded-md w-full"></select></div>
+                <div id="rouletteConfig" class="hidden"><label for="rouletteBallCount" class="block font-bold text-lg mb-2">Nº Bolitas:</label><input type="number" id="rouletteBallCount" value="3" min="1" max="10" class="p-2 border rounded-md w-full" onchange="saveRouletteConfig()"></div>
+                <div><label for="tournamentDate" class="block font-bold text-lg mb-2">Fecha:</label><input type="date" id="tournamentDate" class="p-2 border rounded-md w-full" onchange="saveDateToLocalStorage()"></div>
+                <div><label for="registrationEndTime" class="block font-bold text-lg mb-2">Hora Cierre Inscripción:</label><input type="time" id="registrationEndTime" class="p-2 border rounded-md w-full" onchange="saveEndTime()"></div>
+            </div>
+            <h3 class="text-xl font-bold mb-4 text-blue-900 border-b pb-2">Premios y Acciones</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div><label for="prizePoolInput" class="block font-bold mb-1">Pozo Total $:</label><input type="text" id="prizePoolInput" placeholder="Ej: 500.000" class="p-2 border rounded-md w-full" oninput="formatPrizePool(this); savePrizePool();"></div>
+                <div><label for="firstPrize" class="block font-bold mb-1">1er Lugar $:</label><input type="text" id="firstPrize" placeholder="Ej: 250.000" class="p-2 border rounded-md w-full" oninput="formatPrizePool(this); savePrizes();"></div>
+                <div><label for="secondPrize" class="block font-bold mb-1">2do Lugar $:</label><input type="text" id="secondPrize" placeholder="Ej: 150.000" class="p-2 border rounded-md w-full" oninput="formatPrizePool(this); savePrizes();"></div>
+                <div><label for="thirdPrize" class="block font-bold mb-1">3er Lugar $:</label><input type="text" id="thirdPrize" placeholder="Ej: 100.000" class="p-2 border rounded-md w-full" oninput="formatPrizePool(this); savePrizes();"></div>
+            </div>
+            <div class="flex flex-wrap gap-4 justify-end">
+                <button onclick="exportToPDF()" class="bg-red-600 text-white px-6 py-2 rounded-md font-bold hover:bg-red-700 transition-colors">Exportar PDF</button>
+                <button onclick="startFinal()" class="bg-yellow-500 text-white px-6 py-2 rounded-md font-bold hover:bg-yellow-600 transition-colors">Iniciar Final</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Color Palette Modal -->
+    <div id="colorModal" class="modal-container">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeColorModal()">&times;</span>
+            <h2 class="text-xl font-bold mb-6">Seleccionar Color</h2>
+            <div id="colorModalPalette" class="color-palette justify-center">
+                <!-- Color swatches will be injected here by JavaScript -->
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="toast"></div>
     
     <div class="header-nav">
-        <a href="/base/index.html" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Base de Datos</a>
-        <a href="/torneo/index.html" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors">Ver Torneo</a>
+        <a href="./base.html" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Base de Datos</a>
+        <a href="./torneo.html" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors">Ver Torneo</a>
     </div>
 
     <div class="container">
+        <!-- Main Views -->
         <div id="classificationView">
             <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-8 text-center">Planilla de Torneos</h1>
             <div class="bg-white p-6 rounded-lg shadow-2xl">
-                <div id="statsContainer" class="mb-6 p-4 bg-blue-50 rounded-lg flex flex-col sm:flex-row justify-around text-center gap-4">
-                    <div><h3 class="font-bold text-gray-600">Total Entradas</h3><p id="totalCount" class="text-2xl font-extrabold text-blue-800">0</p></div>
-                    <div><h3 class="font-bold text-gray-600">Cupones Torneo</h3><p id="torneoCount" class="text-2xl font-extrabold text-green-600">0</p></div>
-                    <div><h3 class="font-bold text-gray-600">Cupones Canjeo</h3><p id="canjeoCount" class="text-2xl font-extrabold text-indigo-600">0</p></div>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Añadir Participante</h2>
+                    <button onclick="openConfigModal()" class="bg-gray-700 text-white px-6 py-2 rounded-md font-bold hover:bg-gray-800 transition-colors">Configuración ⚙️</button>
                 </div>
-                <div class="mb-4 flex flex-wrap gap-4 items-center">
-                    <div class="flex items-center space-x-2">
-                        <label for="tournamentSelector" class="font-bold text-lg">Seleccionar Torneo:</label>
-                        <select id="tournamentSelector" onchange="changeTournament()" class="p-2 border rounded-md"></select>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <label for="tournamentDate" class="font-bold text-lg">Fecha:</label>
-                        <input type="date" id="tournamentDate" class="p-2 border rounded-md" onchange="saveDateToLocalStorage()">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <label for="prizePoolInput" class="font-bold text-lg">Pozo Total $:</label>
-                        <input type="text" id="prizePoolInput" placeholder="Ej: 500.000" class="p-2 border rounded-md" oninput="formatPrizePool(this); savePrizePool();">
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <label for="registrationEndTime" class="font-bold text-lg">Hora Cierre Inscripción:</label>
-                        <input type="time" id="registrationEndTime" class="p-2 border rounded-md" onchange="saveEndTime()">
-                    </div>
-                </div>
-                <h2 class="text-2xl font-bold mb-4">Añadir Participante</h2>
+                
                 <div class="mb-4 flex flex-wrap gap-2 items-center relative">
                     <input type="text" id="addNombre" placeholder="Buscar por Nombre" class="flex-grow p-2 border rounded-md min-w-[180px]">
                     <input type="text" id="addApellido" placeholder="Apellido" class="flex-grow p-2 border rounded-md min-w-[180px]">
@@ -104,10 +143,9 @@
                         <option value="canjeo">Cupón Canjeo</option>
                     </select>
                     <button onclick="addClientToTournament()" class="bg-green-600 text-white px-6 py-2 rounded-md font-bold hover:bg-green-700 transition-colors flex-grow sm:flex-grow-0">Añadir</button>
-                    <button onclick="exportToPDF()" class="bg-red-600 text-white px-6 py-2 rounded-md font-bold hover:bg-red-700 transition-colors flex-grow sm:flex-grow-0">Exportar PDF</button>
-                    <button onclick="startFinal()" class="bg-yellow-500 text-white px-6 py-2 rounded-md font-bold hover:bg-yellow-600 transition-colors flex-grow sm:flex-grow-0">Iniciar Final</button>
                     <div id="searchResults" class="absolute top-full mt-1 w-full bg-white border rounded-md shadow-lg z-10 hidden"></div>
                 </div>
+
                 <div class="overflow-x-auto"><table id="clientTable" class="min-w-full bg-white"><thead></thead><tbody></tbody></table></div>
             </div>
         </div>
@@ -126,7 +164,6 @@
             </div>
         </div>
 
-        <!-- NUEVA VISTA DE GANADORES -->
         <div id="winnersView" class="hidden">
             <h1 class="text-3xl md:text-4xl font-extrabold text-amber-500 mb-8 text-center">🏆 Ganadores del Torneo 🏆</h1>
             <div class="bg-white p-6 rounded-lg shadow-2xl">
@@ -134,9 +171,7 @@
                    <h2 class="text-2xl font-bold">Podio</h2>
                    <button onclick="showFinalView()" class="bg-gray-500 text-white px-6 py-2 rounded-md font-bold hover:bg-gray-600 transition-colors">← Volver a Mesa Final</button>
                 </div>
-                <div id="winnersList" class="space-y-4">
-                    <!-- Los ganadores se insertarán aquí -->
-                </div>
+                <div id="winnersList" class="space-y-4"></div>
             </div>
         </div>
     </div>
@@ -146,18 +181,30 @@
     </footer>
 
     <script>
+        // --- CONFIGURACIÓN GLOBAL ---
         const TOURNAMENTS = {
-            ruleta: { name: 'Torneo de Ruleta', playersPerTable: 5, rounds: ['Bolita 1', 'Bolita 2', 'Bolita 3', 'Bolita 4'] },
+            ruleta: { name: 'Torneo de Ruleta', playersPerTable: 5, type: 'roulette' },
             draw_poker: { name: 'Torneo de Draw Poker', playersPerTable: 6, rounds: ['Puntaje'] },
             blackjack: { name: 'Torneo de Blackjack', playersPerTable: 6, rounds: ['Puntaje'] },
-            ruleta_vip: { name: 'Torneo de Ruleta VIP', playersPerTable: 5, rounds: ['Bolita 1', 'Bolita 2', 'Bolita 3', 'Bolita 4'] },
+            ruleta_vip: { name: 'Torneo de Ruleta VIP', playersPerTable: 5, type: 'roulette' },
             draw_poker_vip: { name: 'Torneo de Draw Poker VIP', playersPerTable: 6, rounds: ['Puntaje'] },
             blackjack_vip: { name: 'Torneo de Blackjack VIP', playersPerTable: 6, rounds: ['Puntaje'] }
         };
+        const PREDEFINED_COLORS = ['#E53935', '#D81B60', '#8E24AA', '#1E88E5', '#00897B', '#43A047', '#FDD835', '#FB8C00', '#6D4C41', '#455A64', '#FFFFFF', '#000000'];
 
         let selectedIndices = [];
         let sortableInstance = null;
         let selectedClientRut = null;
+
+        // --- FUNCIONES AUXILIARES Y DE DATOS ---
+        function getTournamentRounds(tournamentType) {
+            const tournament = TOURNAMENTS[tournamentType];
+            if (tournament.type === 'roulette') {
+                const ballCount = parseInt(localStorage.getItem('rouletteBallCount') || '3');
+                return Array.from({ length: ballCount }, (_, i) => `Bolita ${i + 1}`);
+            }
+            return tournament.rounds;
+        }
 
         function showToast(msg, isSuccess = false) { 
             const t = document.getElementById('toast'); 
@@ -169,14 +216,13 @@
         function getClientesBase() { return JSON.parse(localStorage.getItem('clientes_base') || '[]'); }
         function getClientesTorneo(type) { return JSON.parse(localStorage.getItem(`clientes_${type}`) || '[]'); }
         function saveClientesTorneo(type, clients) { localStorage.setItem(`clientes_${type}`, JSON.stringify(clients)); }
-        
         function getFinalists(type) { return JSON.parse(localStorage.getItem(`finalistas_${type}`) || '[]'); }
 
         function calculateTotal(client, tournamentType) {
             const cleanValue = (val) => parseInt(String(val || '0').replace(/\./g, ''));
-            const tournament = TOURNAMENTS[tournamentType];
+            const rounds = getTournamentRounds(tournamentType);
             let total = 0;
-            tournament.rounds.forEach(round => {
+            rounds.forEach(round => {
                 const scoreKey = round.toLowerCase().replace(/ /g, '');
                 total += cleanValue(client[scoreKey]);
             });
@@ -186,20 +232,290 @@
         function getBestEntryPerPlayer(allEntries, tournamentType) {
             const playersMap = new Map();
             allEntries.forEach(entry => {
-                if (!playersMap.has(entry.rut)) {
-                    playersMap.set(entry.rut, []);
-                }
+                if (!playersMap.has(entry.rut)) playersMap.set(entry.rut, []);
                 playersMap.get(entry.rut).push(entry);
             });
-
             const bestEntries = [];
             for (const [rut, entries] of playersMap.entries()) {
-                const sortedEntries = entries.sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
-                bestEntries.push(sortedEntries[0]);
+                bestEntries.push(entries.sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType))[0]);
             }
             return bestEntries;
         }
 
+        // --- RENDERIZADO Y LÓGICA DE LA TABLA PRINCIPAL ---
+        function renderClients(tournamentType) {
+            const tableBody = document.querySelector('#clientTable tbody');
+            const tableHead = document.querySelector('#clientTable thead');
+            const tournament = TOURNAMENTS[tournamentType];
+            const rounds = getTournamentRounds(tournamentType);
+            const clients = getClientesTorneo(tournamentType);
+            const isRoulette = tournament.type === 'roulette';
+            
+            tableBody.innerHTML = '';
+            
+            document.getElementById('totalCount').textContent = clients.length;
+            document.getElementById('torneoCount').textContent = clients.filter(c => c.cuponTorneo).length;
+            document.getElementById('canjeoCount').textContent = clients.filter(c => c.cuponCanjeo).length;
+            
+            let headers = `<tr><th class="p-3 w-12"><input type="checkbox" onchange="toggleSelectAll(this)"></th><th class="p-3">Cliente</th>`;
+            if (isRoulette) headers += `<th class="p-3">Color</th>`;
+            headers += `<th class="p-3">Cupón</th>`;
+            rounds.forEach(round => headers += `<th class="p-3">${round}</th>`);
+            headers += `<th class="p-3">Total</th><th class="p-3 text-center">Acciones</th></tr>`;
+            tableHead.innerHTML = headers;
+
+            clients.forEach((client, index) => {
+                if (index > 0 && index % tournament.playersPerTable === 0) {
+                    const mesaRow = tableBody.insertRow();
+                    mesaRow.className = 'bg-sky-200 font-bold text-sky-800';
+                    let colSpan = isRoulette ? 4 : 3;
+                    const titleCell = mesaRow.insertCell(); titleCell.colSpan = colSpan;
+                    titleCell.className = 'p-2 text-left pl-4';
+                    titleCell.textContent = `Mesa ${Math.floor(index / tournament.playersPerTable) + 1}`;
+                    rounds.forEach(round => { mesaRow.insertCell().className = 'p-2 text-sm text-center'; });
+                    const endCell = mesaRow.insertCell(); endCell.colSpan = 2;
+                }
+                const tr = tableBody.insertRow();
+                const isSelected = selectedIndices.includes(index);
+                let rowClasses = ['player-row', isSelected ? 'selected' : 'not-draggable', isSelected ? '' : (index % 2 === 0 ? 'bg-sky-50' : 'bg-white')];
+                tr.className = rowClasses.join(' ');
+                tr.dataset.index = index; tr.dataset.rut = client.rut; tr.dataset.id = client.id;
+
+                tr.insertCell().innerHTML = `<div class="p-2 text-center"><input type="checkbox" onchange="toggleSelection(this, ${index})" ${isSelected ? 'checked' : ''}></div>`;
+                tr.insertCell().innerHTML = `<div class="p-2 rounded hover:bg-sky-100" onclick="showRutModal('${client.rut}')">${client.nombre} ${client.apellido}</div>`;
+
+                if (isRoulette) {
+                    const colorCell = tr.insertCell();
+                    colorCell.innerHTML = `<div class="p-2 flex justify-center items-center">
+                        <span class="color-swatch" style="background-color: ${client.color || '#FFFFFF'};" onclick="openColorModal(${index})"></span>
+                    </div>`;
+                }
+                
+                let cuponTag = '<span class="bg-slate-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Ninguno</span>';
+                if (client.cuponTorneo) cuponTag = '<span class="bg-green-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Torneo</span>';
+                else if (client.cuponCanjeo) cuponTag = '<span class="bg-indigo-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Canjeo</span>';
+                tr.insertCell().innerHTML = `<div class="p-2 text-center">${cuponTag}</div>`;
+                
+                rounds.forEach(round => {
+                    const scoreKey = round.toLowerCase().replace(/ /g, '');
+                    const formattedScore = formatNumberForDisplay(client[scoreKey]);
+                    tr.insertCell().innerHTML = `<div class="p-2"><input type="tel" value="${formattedScore}" oninput="formatNumericInput(this)" onchange="updateScore(${index}, '${scoreKey}', this.value)" class="score-input"></div>`;
+                });
+
+                tr.insertCell().innerHTML = `<div class="p-2 text-center font-bold">${calculateTotal(client, tournamentType).toLocaleString('es-CL')}</div>`;
+                tr.insertCell().innerHTML = `<div class="p-2 text-center space-x-2"><button onclick="openEditModal(${index})" class="bg-yellow-400 text-white px-3 py-1 rounded-md text-xs hover:bg-yellow-500">Editar</button><button onclick="deleteClient(${index})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">Eliminar</button></div>`;
+            });
+        }
+        
+        function addClientToTournament() {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const nombre = document.getElementById('addNombre').value.trim();
+            const apellido = document.getElementById('addApellido').value.trim();
+            const rutInput = document.getElementById('addRut').value.trim();
+            const tipoCupon = document.getElementById('addTipoCupon').value;
+            if (!nombre || !apellido) { showToast("Nombre y Apellido son obligatorios."); return; }
+            const finalRut = selectedClientRut || rutInput;
+            if (!finalRut) { showToast("El RUT es obligatorio."); return; }
+            const clientsTorneo = getClientesTorneo(tournamentType);
+            const existingEntries = clientsTorneo.filter(c => c.rut === finalRut);
+            if (existingEntries.length >= 2) { showToast(`${nombre} ${apellido} ya utilizó sus 2 entradas.`); return; }
+            if (tipoCupon === 'torneo' && existingEntries.some(e => e.cuponTorneo)) { showToast('Este participante ya utilizó el Cupón Torneo.'); return; }
+            if (tipoCupon === 'canjeo' && existingEntries.some(e => e.cuponCanjeo)) { showToast('Este participante ya utilizó el Cupón Canjeo.'); return; }
+            const clientesBase = getClientesBase();
+            if (!clientesBase.some(c => c.rut === finalRut)) {
+                clientesBase.push({ nombre, apellido, rut: finalRut });
+                localStorage.setItem('clientes_base', JSON.stringify(clientesBase));
+            }
+            const clientData = { 
+                id: Date.now() + '-' + Math.random().toString(36).substring(2, 9),
+                nombre, apellido, rut: finalRut, color: PREDEFINED_COLORS[0],
+                cuponTorneo: tipoCupon === 'torneo', cuponCanjeo: tipoCupon === 'canjeo'
+            };
+            getTournamentRounds(tournamentType).forEach(round => clientData[round.toLowerCase().replace(/ /g, '')] = '');
+            clientsTorneo.push(clientData);
+            saveClientesTorneo(tournamentType, clientsTorneo);
+            renderClients(tournamentType);
+            initializeSortable();
+            showToast(`Participante añadido: ${nombre} ${apellido}`, true);
+            ['addNombre', 'addApellido', 'addRut'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('addTipoCupon').value = 'ninguno';
+            selectedClientRut = null; document.getElementById('addRut').classList.add('hidden');
+        }
+
+        function updateScore(index, scoreKey, value) {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            let clients = getClientesTorneo(tournamentType);
+            if (clients[index]) {
+                clients[index][scoreKey] = value.replace(/\D/g, '');
+                saveClientesTorneo(tournamentType, clients);
+                renderClients(tournamentType);
+                initializeSortable();
+            }
+        }
+
+        function updateClientColor(index, color) {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            let clients = getClientesTorneo(tournamentType);
+            if (clients[index]) {
+                clients[index].color = color;
+                saveClientesTorneo(tournamentType, clients);
+                renderClients(tournamentType);
+                initializeSortable(); // Re-initialize sortable after render
+            }
+        }
+
+        function deleteClient(index) {
+            if (!confirm('¿Estás seguro de que quieres eliminar esta entrada?')) return;
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            let clients = getClientesTorneo(tournamentType);
+            clients.splice(index, 1);
+            saveClientesTorneo(tournamentType, clients);
+            selectedIndices = []; renderClients(tournamentType); initializeSortable();
+            showToast("Entrada eliminada.", true);
+        }
+        
+        // --- LÓGICA DE MODALES (Edit, Config, RUT, Color) ---
+        function openEditModal(index) {
+            const client = getClientesTorneo(document.getElementById('tournamentSelector').value)[index];
+            if (!client) return;
+            document.getElementById('editIndex').value = index;
+            document.getElementById('editNombre').textContent = `${client.nombre} ${client.apellido}`;
+            document.getElementById('editRut').textContent = client.rut;
+            document.getElementById('editTipoCupon').value = client.cuponTorneo ? "torneo" : client.cuponCanjeo ? "canjeo" : "ninguno";
+            document.getElementById('editModal').style.display = 'flex';
+        }
+        function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+        
+        function saveClientChanges() {
+            const index = document.getElementById('editIndex').value;
+            const newCuponStatus = document.getElementById('editTipoCupon').value;
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            let clients = getClientesTorneo(tournamentType);
+            if (clients[index]) {
+                clients[index].cuponTorneo = (newCuponStatus === 'torneo');
+                clients[index].cuponCanjeo = (newCuponStatus === 'canjeo');
+                saveClientesTorneo(tournamentType, clients);
+                renderClients(tournamentType); initializeSortable();
+                closeEditModal(); showToast("Cambios guardados.", true);
+            }
+        }
+
+        function openColorModal(index) {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const client = getClientesTorneo(tournamentType)[index];
+            if (!client) return;
+
+            const paletteContainer = document.getElementById('colorModalPalette');
+            paletteContainer.innerHTML = ''; // Limpiar paleta anterior
+
+            PREDEFINED_COLORS.forEach(color => {
+                const isSelected = client.color && client.color.toUpperCase() === color.toUpperCase();
+                const swatch = document.createElement('span');
+                swatch.className = `color-swatch ${isSelected ? 'selected-color' : ''}`;
+                swatch.style.backgroundColor = color;
+                swatch.style.width = '40px';
+                swatch.style.height = '40px';
+                swatch.onclick = () => {
+                    updateClientColor(index, color);
+                    closeColorModal();
+                };
+                paletteContainer.appendChild(swatch);
+            });
+
+            document.getElementById('colorModal').style.display = 'flex';
+        }
+        function closeColorModal() { document.getElementById('colorModal').style.display = 'none'; }
+
+        function showRutModal(rut) {
+            const client = getClientesBase().find(c => c.rut === rut);
+            const modal = document.getElementById('rutModal');
+            modal.querySelector('#modalContent').innerHTML = `<span class="close-btn" onclick="closeRutModal()">&times;</span><h2 class="text-xl font-bold mb-4">Datos de Cliente</h2><p><span class="font-bold">Nombre:</span> ${client ? `${client.nombre} ${client.apellido}` : 'N/A'}</p><p><span class="font-bold">RUT:</span> ${rut || 'No definido'}</p>`;
+            modal.style.display = 'flex';
+        }
+        function closeRutModal() { document.getElementById('rutModal').style.display = 'none'; }
+        
+        function openConfigModal() { document.getElementById('configModal').style.display = 'flex'; }
+        function closeConfigModal() { document.getElementById('configModal').style.display = 'none'; }
+
+        // --- LÓGICA DE VISTAS (Clasificación, Final, Ganadores) ---
+        const classificationView = document.getElementById('classificationView'), finalView = document.getElementById('finalView'), winnersView = document.getElementById('winnersView');
+        function showClassificationView() { classificationView.style.display = 'block'; finalView.style.display = 'none'; winnersView.style.display = 'none'; }
+        function showFinalView() { classificationView.style.display = 'none'; finalView.style.display = 'block'; winnersView.style.display = 'none'; renderFinalists(); }
+        function showWinnersView() { classificationView.style.display = 'none'; finalView.style.display = 'none'; winnersView.style.display = 'block'; renderWinners(); }
+
+        // --- LÓGICA DE MESA FINAL Y GANADORES ---
+        function startFinal() {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const allEntries = getClientesTorneo(tournamentType);
+            const rankingSize = TOURNAMENTS[tournamentType].playersPerTable;
+            const bestEntries = getBestEntryPerPlayer(allEntries, tournamentType);
+            if (bestEntries.length < rankingSize) { showToast(`Se necesitan ${rankingSize} jugadores únicos.`); return; }
+            const finalists = bestEntries.sort((a,b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType)).slice(0, rankingSize);
+            localStorage.setItem(`finalistas_${tournamentType}`, JSON.stringify(finalists));
+            showToast("Mesa final generada.", true); showFinalView();
+        }
+
+        function declareWinners() { showWinnersView(); }
+        function saveFinalists(type, finalists) { localStorage.setItem(`finalistas_${type}`, JSON.stringify(finalists)); }
+
+        function renderFinalists() {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const rounds = getTournamentRounds(tournamentType);
+            const finalists = getFinalists(tournamentType);
+            const tableBody = document.querySelector('#finalistTable tbody');
+            const tableHead = document.querySelector('#finalistTable thead');
+            if(!tableBody || !tableHead) return;
+            tableBody.innerHTML = '';
+            let headers = `<tr><th class="p-3">Finalista</th>`;
+            rounds.forEach(round => headers += `<th class="p-3">${round}</th>`);
+            headers += `<th class="p-3">Total Final</th></tr>`;
+            tableHead.innerHTML = headers;
+            finalists.forEach((finalist, index) => {
+                const tr = tableBody.insertRow();
+                tr.className = index % 2 === 0 ? 'bg-sky-50' : 'bg-white';
+                tr.insertCell().innerHTML = `<div class="p-2 font-semibold">${finalist.nombre} ${finalist.apellido}</div>`;
+                rounds.forEach(round => {
+                    const scoreKey = round.toLowerCase().replace(/ /g, '');
+                    const formattedScore = formatNumberForDisplay(finalist[scoreKey]);
+                    tr.insertCell().innerHTML = `<div class="p-2"><input type="tel" value="${formattedScore}" oninput="formatNumericInput(this)" onchange="updateFinalistScore(${index},'${scoreKey}',this.value)" class="score-input"></div>`;
+                });
+                tr.insertCell().innerHTML = `<div class="p-2 text-center font-bold">${calculateTotal(finalist, tournamentType).toLocaleString('es-CL')}</div>`;
+            });
+        }
+        
+        function renderWinners() {
+            const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
+            const finalists = getFinalists(document.getElementById('tournamentSelector').value);
+            const sortedFinalists = finalists.sort((a, b) => calculateTotal(b, document.getElementById('tournamentSelector').value) - calculateTotal(a, document.getElementById('tournamentSelector').value));
+            const winnersList = document.getElementById('winnersList');
+            winnersList.innerHTML = '';
+            const prizeConfig = [
+                { prize: prizes.first || 0, label: '1er Lugar', color: 'bg-amber-400', emoji: '🥇' },
+                { prize: prizes.second || 0, label: '2do Lugar', color: 'bg-slate-400', emoji: '🥈' },
+                { prize: prizes.third || 0, label: '3er Lugar', color: 'bg-amber-600', emoji: '🥉' }
+            ];
+            for (let i = 0; i < 3; i++) {
+                const winner = sortedFinalists[i];
+                if (winner) {
+                    const prizeAmount = parseInt(prizeConfig[i].prize).toLocaleString('es-CL');
+                    const winnerCard = document.createElement('div');
+                    winnerCard.className = `p-4 rounded-lg shadow-lg text-white ${prizeConfig[i].color}`;
+                    winnerCard.innerHTML = `<div class="flex items-center justify-between"><div><p class="text-2xl font-bold">${prizeConfig[i].emoji} ${prizeConfig[i].label}</p><p class="text-xl">${winner.nombre} ${winner.apellido}</p></div><p class="text-3xl font-extrabold">$${prizeAmount}</p></div>`;
+                    winnersList.appendChild(winnerCard);
+                }
+            }
+        }
+
+        function updateFinalistScore(index, scoreKey, value) {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            let finalists = getFinalists(tournamentType);
+            if(finalists[index]) {
+                finalists[index][scoreKey] = value.replace(/\D/g, '');
+                saveFinalists(tournamentType, finalists); renderFinalists();
+            }
+        }
+
+        // --- EXPORTACIÓN Y ORDENAMIENTO ---
         async function exportToPDF() {
             try {
                 const { PDFDocument, rgb, StandardFonts } = PDFLib;
@@ -210,135 +526,81 @@
                 const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
                 const tournamentType = document.getElementById('tournamentSelector').value;
                 const tournament = TOURNAMENTS[tournamentType];
+                const rounds = getTournamentRounds(tournamentType);
                 const clients = getClientesTorneo(tournamentType);
                 const tournamentDate = document.getElementById('tournamentDate').value;
                 const [year, month, day] = tournamentDate.split('-');
                 const formattedDate = `${day}/${month}/${year}`;
 
                 let y = height - 50;
+                page.drawText(tournament.name, { x: 50, y, font: fontBold, size: 24 }); y -= 20;
+                page.drawText(`Fecha: ${formattedDate}`, { x: 50, y, font: font, size: 12 }); y -= 40;
 
-                page.drawText(tournament.name, { x: 50, y, font: fontBold, size: 24, color: rgb(0.1, 0.3, 0.6) });
-                y -= 20;
-                page.drawText(`Fecha: ${formattedDate}`, { x: 50, y, font: font, size: 12, color: rgb(0.2, 0.2, 0.2) });
-                y -= 40;
-
-                page.drawText('Resumen de Entradas', { x: 50, y, font: fontBold, size: 16 });
-                y -= 25;
+                page.drawText('Resumen de Entradas', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
                 const torneoCount = clients.filter(c => c.cuponTorneo).length;
                 const canjeoCount = clients.filter(c => c.cuponCanjeo).length;
                 page.drawText(`- Total de Entradas: ${clients.length}`, { x: 60, y, font, size: 11 }); y -= 15;
                 page.drawText(`- Cupones Torneo: ${torneoCount}`, { x: 60, y, font, size: 11 }); y -= 15;
                 page.drawText(`- Cupones Canjeo: ${canjeoCount}`, { x: 60, y, font, size: 11 }); y -= 30;
 
-                const prizePool = parseInt(localStorage.getItem('prizePool') || '0');
-                const finalists = getFinalists(tournamentType);
-                const sortedFinalists = finalists.sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
-
-                page.drawText('Premios del Torneo', { x: 50, y, font: fontBold, size: 16 });
-                y -= 25;
-
-                page.drawText(`- Pozo Total: $${prizePool.toLocaleString('es-CL')}`, { x: 60, y, font, size: 11 });
-                y -= 15;
-
-                if (prizePool > 0 && sortedFinalists.length > 0) {
-                    const prizes = [
-                        { percent: 0.5, label: '1er Lugar (50%)' },
-                        { percent: 0.3, label: '2do Lugar (30%)' },
-                        { percent: 0.2, label: '3er Lugar (20%)' }
-                    ];
-
-                    for (let i = 0; i < prizes.length; i++) {
-                        if (sortedFinalists[i]) {
-                            const winner = sortedFinalists[i];
-                            const prizeAmount = (prizePool * prizes[i].percent).toLocaleString('es-CL');
-                            const winnerName = `${winner.nombre} ${winner.apellido}`;
-                            page.drawText(`- ${prizes[i].label}: $${prizeAmount} - ${winnerName}`, { x: 60, y, font, size: 11 });
-                            y -= 15;
-                        }
-                    }
-                }
-                y -= 30;
-
+                const prizePool = localStorage.getItem('prizePool') || '0';
+                const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
+                page.drawText('Premios del Torneo', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
+                page.drawText(`- Pozo Total: $${parseInt(prizePool).toLocaleString('es-CL')}`, { x: 60, y, font, size: 11 }); y -= 15;
+                page.drawText(`- 1er Lugar: $${parseInt(prizes.first || '0').toLocaleString('es-CL')}`, { x: 60, y, font, size: 11 }); y -= 15;
+                page.drawText(`- 2do Lugar: $${parseInt(prizes.second || '0').toLocaleString('es-CL')}`, { x: 60, y, font, size: 11 }); y -= 15;
+                page.drawText(`- 3er Lugar: $${parseInt(prizes.third || '0').toLocaleString('es-CL')}`, { x: 60, y, font, size: 11 }); y -= 30;
+                
                 page.drawText('Tabla de Puntajes', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
-
-                const headers = ['#', 'Cliente', 'RUT', 'Cupón', ...tournament.rounds, 'Total'];
-                const colWidths = [25, 120, 70, 50, ...Array(tournament.rounds.length).fill(50), 50];
+                const isRoulette = tournament.type === 'roulette';
+                const headers = ['#', 'Cliente', ...(isRoulette ? ['Color'] : []), 'Cupón', ...rounds, 'Total'];
+                const colWidths = [25, 120, ...(isRoulette ? [40] : []), 50, ...Array(rounds.length).fill(50), 50];
                 let x = 50;
-
-                headers.forEach((header, i) => {
-                    page.drawText(header, { x: x + 2, y, font: fontBold, size: 9 });
-                    x += colWidths[i];
-                });
+                headers.forEach((header, i) => { page.drawText(header, { x: x + 2, y, font: fontBold, size: 9 }); x += colWidths[i]; });
                 y -= 15;
-                page.drawLine({
-                    start: { x: 50, y: y + 5 },
-                    end: { x: width - 50, y: y + 5 },
-                    thickness: 1,
-                    color: rgb(0.8, 0.8, 0.8),
-                });
+                page.drawLine({ start: { x: 50, y: y + 5 }, end: { x: width - 50, y: y + 5 }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
 
                 clients.forEach((client, index) => {
                     if (y < 40) {
-                        page = doc.addPage();
-                        y = height - 50;
-                        x = 50;
-                        headers.forEach((header, i) => {
-                            page.drawText(header, { x: x + 2, y, font: fontBold, size: 9 });
-                            x += colWidths[i];
-                        });
+                        page = doc.addPage(); y = height - 50; x = 50;
+                        headers.forEach((header, i) => { page.drawText(header, { x: x + 2, y, font: fontBold, size: 9 }); x += colWidths[i]; });
                         y -= 15;
-                        page.drawLine({
-                            start: { x: 50, y: y + 5 },
-                            end: { x: width - 50, y: y + 5 },
-                            thickness: 1,
-                            color: rgb(0.8, 0.8, 0.8),
-                        });
+                        page.drawLine({ start: { x: 50, y: y + 5 }, end: { x: width - 50, y: y + 5 }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
                     }
-
-                    let cuponText = 'Ninguno';
-                    if (client.cuponTorneo) cuponText = 'Torneo';
-                    else if (client.cuponCanjeo) cuponText = 'Canjeo';
-
-                    const rowData = [
-                        `${index + 1}`,
-                        `${client.nombre} ${client.apellido}`,
-                        client.rut || 'N/A',
-                        cuponText
-                    ];
-                    tournament.rounds.forEach((round) => {
-                        const scoreKey = round.toLowerCase().replace(/ /g, '');
-                        rowData.push(client[scoreKey] || '0');
-                    });
+                    let cuponText = client.cuponTorneo ? 'Torneo' : (client.cuponCanjeo ? 'Canjeo' : 'Ninguno');
+                    const rowData = [`${index + 1}`, `${client.nombre} ${client.apellido}`];
+                    if(isRoulette) rowData.push(' ');
+                    rowData.push(cuponText);
+                    rounds.forEach(round => rowData.push(client[round.toLowerCase().replace(/ /g, '')] || '0'));
                     rowData.push(calculateTotal(client, tournamentType).toLocaleString('es-CL'));
                     
                     x = 50;
                     rowData.forEach((cell, i) => {
-                        page.drawText(String(cell), { x: x + 2, y, font, size: 8 });
+                        if (isRoulette && headers[i] === 'Color') {
+                            const hex = client.color || '#FFFFFF';
+                            const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+                            page.drawRectangle({ x: x + 5, y: y - 5, width: 20, height: 10, color: rgb(r, g, b), borderColor: rgb(0,0,0), borderWidth: 0.5 });
+                        } else {
+                           page.drawText(String(cell), { x: x + 2, y, font, size: 8 });
+                        }
                         x += colWidths[i];
                     });
                     y -= 15;
                 });
-
                 const pdfBytes = await doc.save();
                 download(pdfBytes, `planilla-${tournamentType}-${new Date().toISOString().slice(0,10)}.pdf`, "application/pdf");
                 showToast("PDF exportado correctamente.", true);
-            } catch (error) {
-                console.error("Error al generar PDF:", error);
-                showToast("Error al crear el PDF.");
-            }
+            } catch (error) { console.error("Error al generar PDF:", error); showToast("Error al crear el PDF."); }
         }
-
 
         function toggleSelection(checkbox, index) {
             const tr = checkbox.closest('tr');
             if (checkbox.checked) {
                 if (!selectedIndices.includes(index)) selectedIndices.push(index);
-                tr.classList.add('selected');
-                tr.classList.remove('not-draggable');
+                tr.classList.add('selected'); tr.classList.remove('not-draggable');
             } else {
                 selectedIndices = selectedIndices.filter(i => i !== index);
-                tr.classList.remove('selected');
-                tr.classList.add('not-draggable');
+                tr.classList.remove('selected'); tr.classList.add('not-draggable');
             }
         }
         function toggleSelectAll(masterCheckbox) {
@@ -356,433 +618,72 @@
         function initializeSortable() {
             const tableBody = document.querySelector('#clientTable tbody');
             if (sortableInstance) sortableInstance.destroy();
-            
             sortableInstance = new Sortable(tableBody, {
-                multiDrag: true,
-                selectedClass: 'selected',
-                filter: '.not-draggable',
-                preventOnFilter: true,
-                animation: 150,
-                onEnd: (evt) => {
+                multiDrag: true, selectedClass: 'selected', filter: '.not-draggable', preventOnFilter: true, animation: 150,
+                onEnd: () => {
                     const tournamentType = document.getElementById('tournamentSelector').value;
                     let clients = getClientesTorneo(tournamentType);
                     const clientMap = new Map(clients.map(c => [String(c.id), c]));
                     const newOrderedClients = [];
-                    
-                    const rows = tableBody.querySelectorAll('.player-row');
-                    rows.forEach(row => {
+                    tableBody.querySelectorAll('.player-row').forEach(row => {
                         const id = row.dataset.id;
                         if (clientMap.has(id)) newOrderedClients.push(clientMap.get(id));
                     });
-
-                    if (newOrderedClients.length === clients.length) {
-                        saveClientesTorneo(tournamentType, newOrderedClients);
-                    } else {
-                        showToast("Error al reordenar.");
-                    }
-
+                    if (newOrderedClients.length === clients.length) saveClientesTorneo(tournamentType, newOrderedClients);
+                    else showToast("Error al reordenar.");
                     selectedIndices = [];
-                    if(document.querySelector('#clientTable thead input[type="checkbox"]')) {
-                        document.querySelector('#clientTable thead input[type="checkbox"]').checked = false;
-                    }
+                    if(document.querySelector('#clientTable thead input[type="checkbox"]')) document.querySelector('#clientTable thead input[type="checkbox"]').checked = false;
                     renderClients(tournamentType);
                     initializeSortable();
                 }
             });
         }
         
+        // --- FORMATEO DE INPUTS Y GUARDADO DE CONFIG ---
         function formatNumberForDisplay(value) {
             if (!value) return '';
             const cleanValue = String(value).replace(/\D/g, '');
-            if (cleanValue) {
-                return new Intl.NumberFormat('es-CL').format(cleanValue);
-            }
-            return '';
+            return cleanValue ? new Intl.NumberFormat('es-CL').format(cleanValue) : '';
         }
-
-        function renderClients(tournamentType) {
-            const tableBody = document.querySelector('#clientTable tbody');
-            const tableHead = document.querySelector('#clientTable thead');
-            const tournament = TOURNAMENTS[tournamentType];
-            const clients = getClientesTorneo(tournamentType);
-            
-            tableBody.innerHTML = '';
-            
-            document.getElementById('totalCount').textContent = clients.length;
-            document.getElementById('torneoCount').textContent = clients.filter(c => c.cuponTorneo).length;
-            document.getElementById('canjeoCount').textContent = clients.filter(c => c.cuponCanjeo).length;
-            
-            let headers = `<tr><th class="p-3 w-12"><input type="checkbox" onchange="toggleSelectAll(this)"></th><th class="p-3">Cliente</th><th class="p-3">Cupón</th>`;
-            tournament.rounds.forEach(round => headers += `<th class="p-3">${round}</th>`);
-            headers += `<th class="p-3">Total</th><th class="p-3 text-center">Acciones</th></tr>`;
-            tableHead.innerHTML = headers;
-
-            clients.forEach((client, index) => {
-                if (index % tournament.playersPerTable === 0) {
-                    const mesaRow = tableBody.insertRow();
-                    mesaRow.className = 'bg-sky-200 font-bold text-sky-800';
-                    const titleCell = mesaRow.insertCell();
-                    titleCell.colSpan = 3;
-                    titleCell.className = 'p-2 text-left pl-4';
-                    titleCell.textContent = `Mesa ${Math.floor(index / tournament.playersPerTable) + 1}`;
-                    tournament.rounds.forEach(round => {
-                        const roundCell = mesaRow.insertCell();
-                        roundCell.className = 'p-2 text-sm text-center';
-                        roundCell.textContent = round;
-                    });
-                    const endCell = mesaRow.insertCell();
-                    endCell.colSpan = 2;
-                }
-
-                const tr = tableBody.insertRow();
-                const isSelected = selectedIndices.includes(index);
-                
-                let rowClasses = ['player-row'];
-                if (isSelected) rowClasses.push('selected');
-                else {
-                    rowClasses.push('not-draggable');
-                    rowClasses.push(index % 2 === 0 ? 'bg-sky-50' : 'bg-white');
-                }
-                tr.className = rowClasses.join(' ');
-
-                tr.dataset.index = index;
-                tr.dataset.rut = client.rut; 
-                tr.dataset.id = client.id;
-
-                const selectCell = tr.insertCell();
-                selectCell.className = 'p-2 text-center';
-                selectCell.innerHTML = `<input type="checkbox" onchange="toggleSelection(this, ${index})" ${isSelected ? 'checked' : ''}>`;
-
-                const nombreCell = tr.insertCell();
-                nombreCell.className = 'p-2';
-                nombreCell.innerHTML = `<div class="p-2 rounded hover:bg-sky-100" onclick="showRutModal('${client.rut}')">${client.nombre} ${client.apellido}</div>`;
-
-                const cuponCell = tr.insertCell();
-                cuponCell.className = 'p-2 text-center';
-                let cuponTag = '<span class="bg-slate-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Ninguno</span>';
-                if (client.cuponTorneo) cuponTag = '<span class="bg-green-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Torneo</span>';
-                else if (client.cuponCanjeo) cuponTag = '<span class="bg-indigo-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Canjeo</span>';
-                cuponCell.innerHTML = cuponTag;
-                
-                tournament.rounds.forEach(round => {
-                    const scoreKey = round.toLowerCase().replace(/ /g, '');
-                    const scoreCell = tr.insertCell();
-                    scoreCell.className = 'p-2';
-                    const formattedScore = formatNumberForDisplay(client[scoreKey]);
-                    scoreCell.innerHTML = `<input type="tel" value="${formattedScore}" oninput="formatNumericInput(this)" onchange="updateScore(${index}, '${scoreKey}', this.value)" class="w-full bg-transparent text-center">`;
-                });
-
-                const totalCell = tr.insertCell();
-                totalCell.className = 'p-2 text-center font-bold';
-                totalCell.textContent = calculateTotal(client, tournamentType).toLocaleString('es-CL');
-
-                const accionesCell = tr.insertCell();
-                accionesCell.className = 'p-2 text-center space-x-2';
-                accionesCell.innerHTML = `<button onclick="openEditModal(${index})" class="bg-yellow-400 text-white px-3 py-1 rounded-md text-xs hover:bg-yellow-500">Editar</button><button onclick="deleteClient(${index})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">Eliminar</button>`;
-            });
-        }
-        
-        function addClientToTournament() {
-            const tournamentType = document.getElementById('tournamentSelector').value;
-            const nombre = document.getElementById('addNombre').value.trim();
-            const apellido = document.getElementById('addApellido').value.trim();
-            const rutInput = document.getElementById('addRut').value.trim();
-            const tipoCupon = document.getElementById('addTipoCupon').value;
-
-            if (!nombre || !apellido) { showToast("Nombre y Apellido son obligatorios."); return; }
-            const finalRut = selectedClientRut || rutInput;
-            if (!finalRut) { showToast("El RUT es obligatorio."); return; }
-
-            const clientsTorneo = getClientesTorneo(tournamentType);
-            const existingEntries = clientsTorneo.filter(c => c.rut === finalRut);
-
-            if (existingEntries.length >= 2) {
-                showToast(`${nombre} ${apellido} ya utilizó sus 2 entradas.`);
-                return;
-            }
-            if (tipoCupon === 'torneo' && existingEntries.some(e => e.cuponTorneo)) {
-                showToast('Este participante ya utilizó el Cupón Torneo.');
-                return;
-            }
-            if (tipoCupon === 'canjeo' && existingEntries.some(e => e.cuponCanjeo)) {
-                showToast('Este participante ya utilizó el Cupón Canjeo.');
-                return;
-            }
-
-            const clientesBase = getClientesBase();
-            if (!clientesBase.some(c => c.rut === finalRut)) {
-                clientesBase.push({ nombre, apellido, rut: finalRut });
-                localStorage.setItem('clientes_base', JSON.stringify(clientesBase));
-            }
-            
-            const clientData = { 
-                id: Date.now() + '-' + Math.random().toString(36).substring(2, 9),
-                nombre, apellido, rut: finalRut, 
-                cuponTorneo: tipoCupon === 'torneo', 
-                cuponCanjeo: tipoCupon === 'canjeo'
-            };
-            TOURNAMENTS[tournamentType].rounds.forEach(round => { clientData[round.toLowerCase().replace(/ /g, '')] = ''; });
-            clientsTorneo.push(clientData);
-            saveClientesTorneo(tournamentType, clientsTorneo);
-            renderClients(tournamentType);
-            initializeSortable();
-            showToast(`Participante añadido: ${nombre} ${apellido}`, true);
-            
-            ['addNombre', 'addApellido', 'addRut'].forEach(id => document.getElementById(id).value = '');
-            document.getElementById('addTipoCupon').value = 'ninguno';
-            selectedClientRut = null;
-            document.getElementById('addRut').classList.add('hidden');
-        }
-
-        function updateScore(index, scoreKey, value) {
-            const tournamentType = document.getElementById('tournamentSelector').value;
-            let clients = getClientesTorneo(tournamentType);
-            if (clients[index]) {
-                clients[index][scoreKey] = value.replace(/\D/g, '');
-                saveClientesTorneo(tournamentType, clients);
-                renderClients(tournamentType);
-                initializeSortable();
-            }
-        }
-
-        function deleteClient(index) {
-            if (!confirm('¿Estás seguro de que quieres eliminar esta entrada del torneo?')) return;
-            const tournamentType = document.getElementById('tournamentSelector').value;
-            let clients = getClientesTorneo(tournamentType);
-            clients.splice(index, 1);
-            saveClientesTorneo(tournamentType, clients);
-            selectedIndices = [];
-            renderClients(tournamentType);
-            initializeSortable();
-            showToast("Entrada eliminada del torneo.", true);
-        }
-        
-        function openEditModal(index) {
-            const tournamentType = document.getElementById('tournamentSelector').value;
-            const clients = getClientesTorneo(tournamentType);
-            const client = clients[index];
-            if (!client) return;
-
-            document.getElementById('editIndex').value = index;
-            document.getElementById('editNombre').textContent = `${client.nombre} ${client.apellido}`;
-            document.getElementById('editRut').textContent = client.rut;
-            
-            let currentCupon = 'ninguno';
-            if (client.cuponTorneo) currentCupon = 'torneo';
-            else if (client.cuponCanjeo) currentCupon = 'canjeo';
-            document.getElementById('editTipoCupon').value = currentCupon;
-
-            document.getElementById('editModal').style.display = 'flex';
-        }
-        function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
-        function saveClientChanges() {
-            const index = document.getElementById('editIndex').value;
-            const newCuponStatus = document.getElementById('editTipoCupon').value;
-            const tournamentType = document.getElementById('tournamentSelector').value;
-            let clients = getClientesTorneo(tournamentType);
-            
-            if (clients[index]) {
-                clients[index].cuponTorneo = (newCuponStatus === 'torneo');
-                clients[index].cuponCanjeo = (newCuponStatus === 'canjeo');
-                saveClientesTorneo(tournamentType, clients);
-                renderClients(tournamentType);
-                initializeSortable();
-                closeEditModal();
-                showToast("Cambios guardados.", true);
-            }
-        }
-
-        const classificationView = document.getElementById('classificationView');
-        const finalView = document.getElementById('finalView');
-        const winnersView = document.getElementById('winnersView');
-
-        function showClassificationView() {
-            classificationView.style.display = 'block';
-            finalView.style.display = 'none';
-            winnersView.style.display = 'none';
-            localStorage.setItem('tournamentView', 'classification');
-        }
-        function showFinalView() {
-            classificationView.style.display = 'none';
-            finalView.style.display = 'block';
-            winnersView.style.display = 'none';
-            renderFinalists();
-            localStorage.setItem('tournamentView', 'final');
-        }
-        function showWinnersView() {
-            classificationView.style.display = 'none';
-            finalView.style.display = 'none';
-            winnersView.style.display = 'block';
-            renderWinners();
-            localStorage.setItem('tournamentView', 'winners');
-        }
-
-        function startFinal() {
-            const tournamentType = document.getElementById('tournamentSelector').value;
-            const allEntries = getClientesTorneo(tournamentType);
-            const rankingSize = TOURNAMENTS[tournamentType].playersPerTable;
-            
-            const bestEntries = getBestEntryPerPlayer(allEntries, tournamentType);
-
-            if (bestEntries.length < rankingSize) {
-                showToast(`Se necesitan al menos ${rankingSize} jugadores únicos para iniciar la final.`);
-                return;
-            }
-            
-            const sortedFinalists = bestEntries.sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
-            const finalists = sortedFinalists.slice(0, rankingSize);
-            
-            localStorage.setItem(`finalistas_${tournamentType}`, JSON.stringify(finalists));
-            showToast("Mesa final generada.", true);
-            
-            showFinalView();
-        }
-
-        function declareWinners() {
-            showWinnersView();
-        }
-
-        function saveFinalists(type, finalists) { localStorage.setItem(`finalistas_${type}`, JSON.stringify(finalists)); }
-
-        function renderFinalists() {
-            const tournamentType = document.getElementById('tournamentSelector').value;
-            const tournament = TOURNAMENTS[tournamentType];
-            const finalists = getFinalists(tournamentType);
-            const tableBody = document.querySelector('#finalistTable tbody');
-            const tableHead = document.querySelector('#finalistTable thead');
-            if(!tableBody || !tableHead) return;
-
-            tableBody.innerHTML = '';
-            let headers = `<tr><th class="p-3">Finalista</th>`;
-            tournament.rounds.forEach(round => headers += `<th class="p-3">${round}</th>`);
-            headers += `<th class="p-3">Total Final</th></tr>`;
-            tableHead.innerHTML = headers;
-
-            finalists.forEach((finalist, index) => {
-                const tr = tableBody.insertRow();
-                tr.className = index % 2 === 0 ? 'bg-sky-50' : 'bg-white';
-
-                const nombreCell = tr.insertCell();
-                nombreCell.className = 'p-2 font-semibold';
-                nombreCell.textContent = `${finalist.nombre} ${finalist.apellido}`;
-
-                tournament.rounds.forEach(round => {
-                    const scoreKey = round.toLowerCase().replace(/ /g, '');
-                    const scoreCell = tr.insertCell();
-                    scoreCell.className = 'p-2';
-                    const formattedScore = formatNumberForDisplay(finalist[scoreKey]);
-                    scoreCell.innerHTML = `<input type="tel" value="${formattedScore}" oninput="formatNumericInput(this)" onchange="updateFinalistScore(${index}, '${scoreKey}', this.value)" class="w-full bg-transparent text-center">`;
-                });
-
-                const totalCell = tr.insertCell();
-                totalCell.className = 'p-2 text-center font-bold';
-                totalCell.textContent = calculateTotal(finalist, tournamentType).toLocaleString('es-CL');
-            });
-        }
-        
-        function renderWinners() {
-            const tournamentType = document.getElementById('tournamentSelector').value;
-            const prizePool = parseInt(localStorage.getItem('prizePool') || '0');
-            const finalists = getFinalists(tournamentType);
-            const sortedFinalists = finalists.sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
-            const winnersList = document.getElementById('winnersList');
-            winnersList.innerHTML = '';
-
-            const prizes = [
-                { percent: 0.5, label: '1er Lugar', color: 'bg-amber-400', emoji: '🥇' },
-                { percent: 0.3, label: '2do Lugar', color: 'bg-slate-400', emoji: '🥈' },
-                { percent: 0.2, label: '3er Lugar', color: 'bg-amber-600', emoji: '🥉' }
-            ];
-
-            for (let i = 0; i < 3; i++) {
-                const winner = sortedFinalists[i];
-                if (winner) {
-                    const prizeAmount = (prizePool * prizes[i].percent).toLocaleString('es-CL');
-                    const winnerCard = document.createElement('div');
-                    winnerCard.className = `p-4 rounded-lg shadow-lg text-white ${prizes[i].color}`;
-                    winnerCard.innerHTML = `
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-2xl font-bold">${prizes[i].emoji} ${prizes[i].label}</p>
-                                <p class="text-xl">${winner.nombre} ${winner.apellido}</p>
-                            </div>
-                            <p class="text-3xl font-extrabold">$${prizeAmount}</p>
-                        </div>
-                    `;
-                    winnersList.appendChild(winnerCard);
-                }
-            }
-        }
-
-        function updateFinalistScore(index, scoreKey, value) {
-            const tournamentType = document.getElementById('tournamentSelector').value;
-            let finalists = getFinalists(tournamentType);
-            if(finalists[index]) {
-                finalists[index][scoreKey] = value.replace(/\D/g, '');
-                saveFinalists(tournamentType, finalists);
-                renderFinalists();
-            }
-        }
-        
-        function saveDateToLocalStorage() {
-            const dateValue = document.getElementById('tournamentDate').value;
-            if (dateValue) localStorage.setItem('tournamentDate', dateValue);
-        }
-        
-        function formatPrizePool(input) {
-            formatNumericInput(input);
-        }
-
+        function saveDateToLocalStorage() { localStorage.setItem('tournamentDate', document.getElementById('tournamentDate').value); }
+        function formatPrizePool(input) { formatNumericInput(input); }
         function formatRut(input) {
-            let rut = input.value.replace(/[^\dkK]/g, '');
-            rut = rut.replace(/^0+/, '');
-            
+            let rut = input.value.replace(/[^\dkK]/g, '').replace(/^0+/, '');
             if (rut.length > 1) {
                 let body = rut.slice(0, -1);
                 let dv = rut.slice(-1).toUpperCase();
-                let formattedBody = new Intl.NumberFormat('es-CL').format(body);
-                input.value = `${formattedBody}-${dv}`;
-            } else {
-                input.value = rut;
-            }
+                input.value = `${new Intl.NumberFormat('es-CL').format(body)}-${dv}`;
+            } else { input.value = rut; }
         }
-
         function formatNumericInput(input) {
             let value = input.value.replace(/\D/g, '');
-            if (value) {
-                input.value = new Intl.NumberFormat('es-CL').format(value);
-            } else {
-                input.value = '';
-            }
+            input.value = value ? new Intl.NumberFormat('es-CL').format(value) : '';
         }
-
-        function savePrizePool() {
-            const prizePoolInput = document.getElementById('prizePoolInput');
-            const prizePoolValue = prizePoolInput.value.replace(/\./g, ''); 
-            localStorage.setItem('prizePool', prizePoolValue || '0');
+        function savePrizePool() { localStorage.setItem('prizePool', document.getElementById('prizePoolInput').value.replace(/\./g, '') || '0'); }
+        function savePrizes() {
+            const prizes = { first: document.getElementById('firstPrize').value.replace(/\./g, '') || '0', second: document.getElementById('secondPrize').value.replace(/\./g, '') || '0', third: document.getElementById('thirdPrize').value.replace(/\./g, '') || '0' };
+            localStorage.setItem('tournamentPrizes', JSON.stringify(prizes));
         }
-
-        function saveEndTime() {
-            const endTimeValue = document.getElementById('registrationEndTime').value;
-            localStorage.setItem('registrationEndTime', endTimeValue);
+        function saveEndTime() { localStorage.setItem('registrationEndTime', document.getElementById('registrationEndTime').value); }
+        function saveRouletteConfig() {
+            localStorage.setItem('rouletteBallCount', document.getElementById('rouletteBallCount').value);
+            renderClients(document.getElementById('tournamentSelector').value);
+            initializeSortable();
         }
 
         function changeTournament() {
             const tournamentType = document.getElementById('tournamentSelector').value;
             localStorage.setItem('selectedTournament', tournamentType);
-            selectedIndices = [];
-            showClassificationView();
-            renderClients(tournamentType);
-            initializeSortable();
+            document.getElementById('rouletteConfig').classList.toggle('hidden', TOURNAMENTS[tournamentType].type !== 'roulette');
+            selectedIndices = []; showClassificationView();
+            renderClients(tournamentType); initializeSortable();
         }
         
-        document.getElementById('addNombre').addEventListener('input', (e) => {
+        // --- EVENT LISTENERS Y CARGA INICIAL ---
+        document.getElementById('addNombre').addEventListener('input', e => {
             const searchTerm = e.target.value.toLowerCase();
             const searchResults = document.getElementById('searchResults');
-            searchResults.innerHTML = '';
-            document.getElementById('addRut').classList.add('hidden');
-            selectedClientRut = null;
-
+            searchResults.innerHTML = ''; document.getElementById('addRut').classList.add('hidden'); selectedClientRut = null;
             if (searchTerm.length > 0) {
                 const matches = getClientesBase().filter(c => (c.nombre + ' ' + c.apellido).toLowerCase().includes(searchTerm));
                 if (matches.length > 0) {
@@ -799,30 +700,18 @@
                         searchResults.appendChild(div);
                     });
                     searchResults.classList.remove('hidden');
-                } else {
-                    document.getElementById('addRut').classList.remove('hidden');
-                }
-            } else {
-                searchResults.classList.add('hidden');
-            }
+                } else document.getElementById('addRut').classList.remove('hidden');
+            } else searchResults.classList.add('hidden');
         });
 
         window.addEventListener('click', e => { 
-            if (e.target.id !== 'addNombre' && document.getElementById('searchResults')) {
-                 document.getElementById('searchResults').classList.add('hidden');
-            }
+            if (e.target.id !== 'addNombre' && document.getElementById('searchResults')) document.getElementById('searchResults').classList.add('hidden');
             if (e.target === document.getElementById('rutModal')) closeRutModal();
             if (e.target === document.getElementById('editModal')) closeEditModal();
+            if (e.target === document.getElementById('configModal')) closeConfigModal();
+            if (e.target === document.getElementById('colorModal')) closeColorModal(); // Close color modal on outside click
         });
-
-        function showRutModal(rut) {
-            const client = getClientesBase().find(c => c.rut === rut);
-            const modal = document.getElementById('rutModal');
-            modal.querySelector('#modalContent').innerHTML = `<span class="close-btn" onclick="closeRutModal()">&times;</span><h2 class="text-xl font-bold mb-4">Datos de Cliente</h2><p><span class="font-bold">Nombre:</span> ${client ? `${client.nombre} ${client.apellido}` : 'N/A'}</p><p><span class="font-bold">RUT:</span> ${rut || 'No definido'}</p>`;
-            modal.style.display = 'flex';
-        }
-        function closeRutModal() { document.getElementById('rutModal').style.display = 'none'; }
-
+        
         document.addEventListener('DOMContentLoaded', () => {
             const selector = document.getElementById('tournamentSelector');
             Object.keys(TOURNAMENTS).forEach(key => {
@@ -830,25 +719,25 @@
                 option.value = key; option.textContent = TOURNAMENTS[key].name;
                 selector.appendChild(option);
             });
-            const savedTournament = localStorage.getItem('selectedTournament') || 'ruleta';
-            selector.value = savedTournament;
-            
+            selector.value = localStorage.getItem('selectedTournament') || 'ruleta';
             const savedDate = localStorage.getItem('tournamentDate');
-            if (savedDate) document.getElementById('tournamentDate').value = savedDate;
-            else document.getElementById('tournamentDate').value = new Date().toISOString().split('T')[0];
-            saveDateToLocalStorage(); 
-
+            document.getElementById('tournamentDate').value = savedDate ? savedDate : new Date().toISOString().split('T')[0];
+            saveDateToLocalStorage();
             const prizePoolInput = document.getElementById('prizePoolInput');
-            const savedPrizePool = localStorage.getItem('prizePool') || '';
-            prizePoolInput.value = savedPrizePool;
+            prizePoolInput.value = localStorage.getItem('prizePool') || '';
             formatPrizePool(prizePoolInput);
-
+            const savedPrizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
+            document.getElementById('firstPrize').value = savedPrizes.first || '';
+            document.getElementById('secondPrize').value = savedPrizes.second || '';
+            document.getElementById('thirdPrize').value = savedPrizes.third || '';
+            formatPrizePool(document.getElementById('firstPrize'));
+            formatPrizePool(document.getElementById('secondPrize'));
+            formatPrizePool(document.getElementById('thirdPrize'));
             document.getElementById('registrationEndTime').value = localStorage.getItem('registrationEndTime') || '';
-
-            renderClients(savedTournament);
-            initializeSortable();
-            showClassificationView(); // Asegura que la vista inicial sea la correcta
+            document.getElementById('rouletteBallCount').value = localStorage.getItem('rouletteBallCount') || '3';
+            changeTournament();
         });
     </script>
 </body>
 </html>
+
