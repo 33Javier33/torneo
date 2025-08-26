@@ -163,6 +163,33 @@
             background-color: rgba(30, 41, 59, 0.8);
             color: #e2e8f0;
         }
+
+        /* --- NUEVOS ESTILOS PARA MESA FINAL Y GANADORES --- */
+        .highlight-gold { background-color: #fef9c3 !important; }
+        .dark .highlight-gold { background-color: #78350f !important; }
+        .highlight-silver { background-color: #f1f5f9 !important; }
+        .dark .highlight-silver { background-color: #475569 !important; }
+        .highlight-bronze { background-color: #fae8d7 !important; }
+        .dark .highlight-bronze { background-color: #7c2d12 !important; }
+
+        .winner-podium {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 1rem;
+            text-align: center;
+            padding: 2rem;
+        }
+        .podium-place {
+            padding: 1.5rem;
+            border-radius: 1rem;
+            width: 30%;
+            color: white;
+        }
+        .podium-1 { background-color: #f59e0b; order: 2; min-height: 200px; }
+        .podium-2 { background-color: #64748b; order: 1; min-height: 150px; }
+        .podium-3 { background-color: #9a3412; order: 3; min-height: 120px; }
+
     </style>
 </head>
 <body>
@@ -176,7 +203,8 @@
         </label>
     </div>
 
-    <div id="tableView" class="container">
+    <!-- Vista de Clasificación (la que ya existe) -->
+    <div id="classificationView" class="container">
         <div class="title-section">
             <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-2">Cargando Torneo...</h1>
             <p id="tournamentDate" class="text-xl font-bold text-gray-600"></p>
@@ -184,8 +212,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div id="prize-card-container" class="card text-center">
-                <div id="prize-card-content">
-                    </div>
+                <div id="prize-card-content"></div>
             </div>
             <div id="registration-card" class="card text-center">
                 <h2 class="text-lg font-bold text-gray-600">INSCRIPCIONES</h2>
@@ -206,6 +233,33 @@
         </div>
     </div>
 
+    <!-- NUEVA: Vista de Mesa Final -->
+    <div id="finalView" class="container" style="display: none;">
+        <div class="title-section">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-red-700 dark:text-red-500 mb-2">Mesa Final</h1>
+            <p class="text-xl font-bold text-gray-600">¡Los mejores puntajes compiten ahora!</p>
+        </div>
+        <div class="card">
+            <div class="table-container">
+                <table>
+                    <thead id="finalTableHeader"></thead>
+                    <tbody id="finalTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- NUEVA: Vista de Ganadores -->
+    <div id="winnersView" class="container" style="display: none;">
+        <div class="title-section">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-amber-500 dark:text-amber-400 mb-2">🏆 GANADORES DEL TORNEO 🏆</h1>
+        </div>
+        <div id="winnersPodium" class="winner-podium">
+            <!-- El podio se generará aquí con JavaScript -->
+        </div>
+    </div>
+
+
     <footer class="mt-auto pt-8 text-center text-gray-500 text-sm">
         <p>CarlosPN Interactive®</p>
     </footer>
@@ -224,6 +278,33 @@
 
         let prizeViewIndex = 0;
         let prizeInterval;
+
+        // --- FUNCIÓN CONTROLADORA PRINCIPAL ---
+        function updateActiveView() {
+            const viewState = localStorage.getItem('tournament_view_state') || 'classification';
+            
+            // Ocultar todas las vistas primero
+            document.getElementById('classificationView').style.display = 'none';
+            document.getElementById('finalView').style.display = 'none';
+            document.getElementById('winnersView').style.display = 'none';
+
+            // Mostrar la vista correcta y renderizar su contenido
+            switch (viewState) {
+                case 'final':
+                    document.getElementById('finalView').style.display = 'block';
+                    renderFinalTable();
+                    break;
+                case 'winners':
+                    document.getElementById('winnersView').style.display = 'block';
+                    renderWinnersPodium();
+                    break;
+                case 'classification':
+                default:
+                    document.getElementById('classificationView').style.display = 'block';
+                    renderTournamentTable();
+                    break;
+            }
+        }
 
         function updatePrizeCard() {
             const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
@@ -257,24 +338,18 @@
             prizeViewIndex = (prizeViewIndex + 1) % views.length;
         }
         
-        // --- NUEVA FUNCIÓN PARA FORMATEAR NOMBRES ---
         function formatPlayerName(nombre, apellido) {
-            if (!nombre || !apellido) return ''; // Maneja casos con datos faltantes
-
-            // Divide los nombres y apellidos, y filtra partes vacías por si hay dobles espacios
+            if (!nombre || !apellido) return '';
             const nombreParts = nombre.trim().split(' ').filter(n => n); 
             const apellidoParts = apellido.trim().split(' ').filter(a => a);
-
             let formattedNombre = nombreParts[0] || '';
             if (nombreParts.length > 1) {
                 formattedNombre += ` ${nombreParts[1].charAt(0)}.`;
             }
-
             let formattedApellido = apellidoParts[0] || '';
             if (apellidoParts.length > 1) {
                 formattedApellido += ` ${apellidoParts[1].charAt(0)}.`;
             }
-            
             return `${formattedNombre} ${formattedApellido}`.trim();
         }
 
@@ -337,7 +412,7 @@
 
             const tableBody = document.getElementById('tableBody');
             if (playersWithScores.length === 0) {
-                const colSpan = rounds.length + 3;
+                const colSpan = (rounds ? rounds.length : 0) + 3;
                 tableBody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center italic py-8">Aún no hay jugadores registrados.</td></tr>`;
                 return;
             }
@@ -346,7 +421,6 @@
             playersWithScores.forEach((player, index) => {
                 bodyHTML += '<tr>';
                 bodyHTML += `<td class="rank">${index + 1}</td>`;
-                // --- CAMBIO APLICADO AQUÍ ---
                 bodyHTML += `<td class="font-bold">${formatPlayerName(player.nombre, player.apellido)}</td>`;
                 rounds.forEach(round => {
                     const scoreKey = round.toLowerCase().replace(/ /g, '');
@@ -358,6 +432,79 @@
             });
             tableBody.innerHTML = bodyHTML;
         }
+
+        // --- NUEVA FUNCIÓN PARA RENDERIZAR LA MESA FINAL ---
+        function renderFinalTable() {
+            const tournamentType = getTournamentType();
+            const finalists = JSON.parse(localStorage.getItem(`finalistas_${tournamentType}`) || '[]');
+            const tournament = TOURNAMENTS[tournamentType];
+            const rounds = getTournamentRounds(tournamentType);
+
+            const tableHeader = document.getElementById('finalTableHeader');
+            let headerHTML = '<tr><th class="w-16">Lugar</th><th>Finalista</th>';
+            rounds.forEach(round => {
+                headerHTML += `<th class="text-right">${round}</th>`;
+            });
+            headerHTML += '<th class="text-right">Total Final</th></tr>';
+            tableHeader.innerHTML = headerHTML;
+
+            const finalistsWithScores = finalists.map(f => ({ ...f, totalScore: calculateTotal(f, tournamentType) }));
+            finalistsWithScores.sort((a, b) => b.totalScore - a.totalScore);
+
+            const tableBody = document.getElementById('finalTableBody');
+            let bodyHTML = '';
+            const highlightClasses = ['highlight-gold', 'highlight-silver', 'highlight-bronze'];
+
+            finalistsWithScores.forEach((player, index) => {
+                const highlightClass = index < 3 ? highlightClasses[index] : '';
+                const emoji = ['🥇', '🥈', '🥉'][index] || `${index + 1}.`;
+
+                bodyHTML += `<tr class="${highlightClass}">`;
+                bodyHTML += `<td class="rank text-2xl">${emoji}</td>`;
+                bodyHTML += `<td class="font-bold text-lg">${formatPlayerName(player.nombre, player.apellido)}</td>`;
+                rounds.forEach(round => {
+                    const scoreKey = round.toLowerCase().replace(/ /g, '');
+                    bodyHTML += `<td class="score">${formatNumber(player[scoreKey] || 0)}</td>`;
+                });
+                bodyHTML += `<td class="score total-score text-xl">${formatNumber(player.totalScore)}</td>`;
+                bodyHTML += '</tr>';
+            });
+            tableBody.innerHTML = bodyHTML;
+        }
+
+        // --- NUEVA FUNCIÓN PARA RENDERIZAR EL PODIO DE GANADORES ---
+        function renderWinnersPodium() {
+            const tournamentType = getTournamentType();
+            const finalists = JSON.parse(localStorage.getItem(`finalistas_${tournamentType}`) || '[]');
+            const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
+            const sortedWinners = finalists
+                .map(f => ({ ...f, totalScore: calculateTotal(f, tournamentType) }))
+                .sort((a, b) => b.totalScore - a.totalScore);
+
+            const podiumContainer = document.getElementById('winnersPodium');
+            podiumContainer.innerHTML = ''; // Limpiar
+
+            const prizeConfig = [
+                { prize: prizes.first || 0, label: '1er Lugar', emoji: '🥇' },
+                { prize: prizes.second || 0, label: '2do Lugar', emoji: '🥈' },
+                { prize: prizes.third || 0, label: '3er Lugar', emoji: '🥉' }
+            ];
+
+            for (let i = 0; i < 3; i++) {
+                const winner = sortedWinners[i];
+                if (winner) {
+                    const podiumDiv = document.createElement('div');
+                    podiumDiv.className = `podium-place podium-${i + 1}`;
+                    podiumDiv.innerHTML = `
+                        <p class="text-5xl mb-2">${prizeConfig[i].emoji}</p>
+                        <h3 class="text-2xl font-bold">${formatPlayerName(winner.nombre, winner.apellido)}</h3>
+                        <p class="text-3xl font-extrabold mt-2">$${formatNumber(prizeConfig[i].prize)}</p>
+                    `;
+                    podiumContainer.appendChild(podiumDiv);
+                }
+            }
+        }
+
 
         function checkRegistrationStatus() {
             const endTimeString = localStorage.getItem('registrationEndTime');
@@ -403,7 +550,7 @@
             }
             themeSwitch.addEventListener('change', (e) => toggleDarkMode(e.target.checked));
 
-            renderTournamentTable();
+            updateActiveView(); // <-- CAMBIO: Llamada a la función controladora
             checkRegistrationStatus();
             updateClock();
             
@@ -414,13 +561,17 @@
             setInterval(updateClock, 1000);
 
             window.addEventListener('storage', (event) => {
-                if (event.key.startsWith('clientes_') || ['tournamentPrizes', 'prizePool', 'selectedTournament', 'registrationEndTime', 'tournamentDate', 'rouletteBallCount'].includes(event.key)) {
-                    renderTournamentTable();
-                    checkRegistrationStatus();
-                    clearInterval(prizeInterval);
-                    prizeViewIndex = 0;
-                    updatePrizeCard();
-                    prizeInterval = setInterval(updatePrizeCard, 4000);
+                // Se simplifica la condición para que cualquier cambio relevante actualice la vista
+                if (event.key.startsWith('clientes_') || event.key.startsWith('finalistas_') || ['tournamentPrizes', 'prizePool', 'selectedTournament', 'registrationEndTime', 'tournamentDate', 'rouletteBallCount', 'tournament_view_state'].includes(event.key)) {
+                    updateActiveView(); // <-- CAMBIO: Llamada a la función controladora
+                    
+                    // Reiniciar el carrusel de premios solo si cambia la información de premios
+                    if (['tournamentPrizes', 'prizePool'].includes(event.key)) {
+                        clearInterval(prizeInterval);
+                        prizeViewIndex = 0;
+                        updatePrizeCard();
+                        prizeInterval = setInterval(updatePrizeCard, 4000);
+                    }
                 }
             });
 
@@ -440,3 +591,4 @@
     </script>
 </body>
 </html>
+
