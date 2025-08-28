@@ -97,7 +97,6 @@
                 <div id="rouletteConfig" class="hidden"><label for="rouletteBallCount" class="block font-bold text-lg mb-2">Nº Bolitas:</label><input type="number" id="rouletteBallCount" value="3" min="1" max="10" class="p-2 border rounded-md w-full" onchange="saveRouletteConfig()"></div>
                 <div><label for="tournamentDate" class="block font-bold text-lg mb-2">Fecha:</label><input type="date" id="tournamentDate" class="p-2 border rounded-md w-full" onchange="saveDateToLocalStorage()"></div>
                 <div><label for="registrationEndTime" class="block font-bold text-lg mb-2">Hora Cierre Inscripción:</label><input type="time" id="registrationEndTime" class="p-2 border rounded-md w-full" onchange="saveEndTime()"></div>
-                <!-- === CAMPO AÑADIDO === -->
                 <div class="md:col-span-2"><label for="tournamentDirector" class="block font-bold text-lg mb-2">Nombre del Encargado:</label><input type="text" id="tournamentDirector" placeholder="Nombre y Apellido" class="p-2 border rounded-md w-full" onchange="saveDirectorName()"></div>
             </div>
             <h3 class="text-xl font-bold mb-4 text-blue-900 border-b pb-2">Premios y Acciones</h3>
@@ -135,9 +134,13 @@
         <div id="classificationView">
             <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-8 text-center">Planilla de Torneos</h1>
             <div class="bg-white p-6 rounded-lg shadow-2xl">
-                <div class="flex justify-between items-center mb-4">
+                <!-- === SECCIÓN MODIFICADA CON NUEVO BOTÓN === -->
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <h2 class="text-2xl font-bold">Añadir Participante</h2>
-                    <button onclick="openConfigModal()" class="bg-gray-700 text-white px-6 py-2 rounded-md font-bold hover:bg-gray-800 transition-colors">Configuración ⚙️</button>
+                    <div>
+                        <button onclick="clearAllParticipants()" class="bg-red-600 text-white px-6 py-2 rounded-md font-bold hover:bg-red-700 transition-colors mr-2">Limpiar Planilla 🗑️</button>
+                        <button onclick="openConfigModal()" class="bg-gray-700 text-white px-6 py-2 rounded-md font-bold hover:bg-gray-800 transition-colors">Configuración ⚙️</button>
+                    </div>
                 </div>
                 
                 <div class="mb-4 flex flex-wrap gap-2 items-center relative">
@@ -343,6 +346,19 @@
                 cell.innerHTML = `<button onclick="closeTable()" class="bg-emerald-600 text-white px-6 py-2 rounded-md font-bold hover:bg-emerald-700 transition-colors">Cerrar Mesa ${currentTableNumber} con ${playersInCurrentTable} Jugador(es)</button>`;
             }
         }
+        
+        // === NUEVA FUNCIÓN AÑADIDA ===
+        function clearAllParticipants() {
+            if (!confirm('¿Estás seguro de que quieres eliminar a TODOS los participantes de esta planilla? Esta acción no se puede deshacer.')) {
+                return;
+            }
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            saveClientesTorneo(tournamentType, []); // Guarda una lista vacía
+            selectedIndices = [];
+            renderClients(tournamentType);
+            initializeSortable();
+            showToast("La planilla ha sido limpiada.", true);
+        }
 
         function closeTable() {
             const tournamentType = document.getElementById('tournamentSelector').value;
@@ -526,16 +542,46 @@
         }
 
         // --- LÓGICA DE MESA FINAL Y GANADORES ---
+        
+        // === FUNCIÓN MODIFICADA PARA RESETEAR PUNTAJES ===
         async function startFinal() {
             const tournamentType = document.getElementById('tournamentSelector').value;
             const allEntries = getClientesTorneo(tournamentType);
             const rankingSize = TOURNAMENTS[tournamentType].playersPerTable;
             const bestEntries = getBestEntryPerPlayer(allEntries, tournamentType);
-            if (bestEntries.length < rankingSize) { showToast(`Se necesitan ${rankingSize} jugadores únicos.`); return; }
-            const finalists = bestEntries.sort((a,b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType)).slice(0, rankingSize);
-            localStorage.setItem(`finalistas_${tournamentType}`, JSON.stringify(finalists));
+            
+            if (bestEntries.length < rankingSize) {
+                showToast(`Se necesitan ${rankingSize} jugadores únicos para la final.`);
+                return;
+            }
+            
+            const finalists = bestEntries
+                .sort((a,b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType))
+                .slice(0, rankingSize);
+
+            // Lógica para resetear los puntajes de los finalistas
+            const rounds = getTournamentRounds(tournamentType);
+            const resetFinalists = finalists.map(finalist => {
+                const cleanFinalist = {
+                    id: finalist.id,
+                    nombre: finalist.nombre,
+                    apellido: finalist.apellido,
+                    rut: finalist.rut,
+                    color: finalist.color // Mantenemos el color si es de ruleta
+                };
+                // Asigna un valor vacío a cada campo de puntaje para que el input aparezca en blanco
+                rounds.forEach(round => {
+                    const scoreKey = round.toLowerCase().replace(/ /g, '');
+                    cleanFinalist[scoreKey] = ''; 
+                });
+                return cleanFinalist;
+            });
+
+            // Guardamos los finalistas con los puntajes ya reseteados
+            localStorage.setItem(`finalistas_${tournamentType}`, JSON.stringify(resetFinalists));
+            
             localStorage.setItem('tournament_view_state', 'final'); 
-            showToast("Mesa final generada.", true); 
+            showToast("Mesa final generada con puntajes en cero.", true); 
             showFinalView();
             await exportToPDF({ isFinalReport: false });
         }
@@ -565,6 +611,7 @@
                 tr.insertCell().innerHTML = `<div class="p-2 font-semibold">${finalist.nombre} ${finalist.apellido}</div>`;
                 rounds.forEach(round => {
                     const scoreKey = round.toLowerCase().replace(/ /g, '');
+                    // Usamos formatNumberForDisplay para que los campos vacíos se muestren correctamente
                     const formattedScore = formatNumberForDisplay(finalist[scoreKey]);
                     tr.insertCell().innerHTML = `<div class="p-2"><input type="tel" value="${formattedScore}" oninput="formatNumericInput(this)" onchange="updateFinalistScore(${index},'${scoreKey}',this.value)" class="score-input"></div>`;
                 });
@@ -604,7 +651,7 @@
             }
         }
 
-        // --- EXPORTACIÓN Y ORDENAMIENTO (ACTUALIZADO) ---
+        // --- EXPORTACIÓN Y ORDENAMIENTO ---
         async function exportToPDF(options = { isFinalReport: false }) {
             try {
                 const { PDFDocument, rgb, StandardFonts } = PDFLib;
@@ -635,9 +682,6 @@
                 page.drawText(`- Cupones Canjeo: ${canjeoCount}`, { x: 60, y, font, size: 11 }); y -= 30;
 
                 page.drawText('Tabla de Clasificación', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
-                const isRoulette = tournament.type === 'roulette';
-                
-                // === CAMBIO: Se elimina la columna 'Color' del PDF para Ruleta ===
                 const headers = ['#', 'Cliente', 'RUT', 'Cupón', ...rounds, 'Total'];
                 const colWidths = [25, 150, 80, 50, ...Array(rounds.length).fill(40), 60];
                 
@@ -647,7 +691,7 @@
                 page.drawLine({ start: { x: 50, y: y + 5 }, end: { x: width - 50, y: y + 5 }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
 
                 clients.forEach((client, index) => {
-                    if (y < 40) { page = doc.addPage(); y = height - 50; /* Redibujar cabecera */ }
+                    if (y < 40) { page = doc.addPage(); y = height - 50; }
                     let cuponText = client.cuponTorneo ? 'Torneo' : (client.cuponCanjeo ? 'Canjeo' : 'Ninguno');
                     const rowData = [`${index + 1}`, `${client.nombre} ${client.apellido}`, client.rut, cuponText];
                     rounds.forEach(round => rowData.push(client[round.toLowerCase().replace(/ /g, '')] || '0'));
@@ -678,7 +722,6 @@
                     const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
                     const prizeConfig = [prizes.first || '0', prizes.second || '0', prizes.third || '0'];
                     y -= 30;
-                    // === CORRECCIÓN: Se elimina el emoji del trofeo que causaba el error ===
                     page.drawText('Podio de Ganadores', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
                     const sortedFinalists = finalists.sort((a,b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
                     for (let i = 0; i < 3; i++) {
@@ -843,19 +886,13 @@
             });
             selector.value = localStorage.getItem('selectedTournament') || 'ruleta';
             
-            // --- LÓGICA DE FECHA MODIFICADA ---
-            // Se busca una fecha guardada para el torneo.
             let tournamentDateValue = localStorage.getItem('tournamentDate');
             if (!tournamentDateValue) {
-                // Si no se encuentra una fecha, se establece la fecha actual como la fecha de inicio del torneo.
-                // Esta fecha quedará guardada y no cambiará automáticamente después de la medianoche.
                 tournamentDateValue = new Date().toISOString().split('T')[0];
                 localStorage.setItem('tournamentDate', tournamentDateValue);
             }
-            // Asigna la fecha (ya sea la guardada o la recién creada) al campo de fecha.
             document.getElementById('tournamentDate').value = tournamentDateValue;
             
-            // Cargar otros datos guardados
             document.getElementById('tournamentDirector').value = localStorage.getItem('tournamentDirector') || '';
             const prizePoolInput = document.getElementById('prizePoolInput');
             prizePoolInput.value = localStorage.getItem('prizePool') || '';
