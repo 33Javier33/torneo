@@ -134,7 +134,6 @@
         <div id="classificationView">
             <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-8 text-center">Planilla de Torneos</h1>
             <div class="bg-white p-6 rounded-lg shadow-2xl">
-                <!-- === SECCIÓN MODIFICADA CON NUEVO BOTÓN === -->
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <h2 class="text-2xl font-bold">Añadir Participante</h2>
                     <div>
@@ -282,12 +281,18 @@
             const totalColSpan = (isRoulette ? 5 : 4) + rounds.length + 1;
 
             clients.forEach((client, index) => {
+                // === LÓGICA MODIFICADA PARA REABRIR MESA ===
                 if (client.isTableBreak) {
                     const breakRow = tableBody.insertRow();
                     breakRow.className = 'table-break-row';
                     const cell = breakRow.insertCell();
                     cell.colSpan = totalColSpan;
-                    cell.innerHTML = `--- Mesa ${client.tableNumber} cerrada con ${client.playerCount} jugador(es) ---`;
+                    cell.innerHTML = `
+                        <div class="flex justify-center items-center gap-4">
+                            <span>--- Mesa ${client.tableNumber} cerrada con ${client.playerCount} jugador(es) ---</span>
+                            <button onclick="reopenTable(${index})" class="bg-blue-600 text-white px-4 py-1 rounded-md text-xs font-bold hover:bg-blue-700 transition-colors">Reabrir Mesa</button>
+                        </div>
+                    `;
                     
                     currentTableNumber = client.tableNumber + 1;
                     playersInCurrentTable = 0;
@@ -347,20 +352,23 @@
             }
         }
         
-        // === NUEVA FUNCIÓN AÑADIDA ===
         function clearAllParticipants() {
             if (!confirm('¿Estás seguro de que quieres eliminar a TODOS los participantes de esta planilla? Esta acción no se puede deshacer.')) {
                 return;
             }
             const tournamentType = document.getElementById('tournamentSelector').value;
-            saveClientesTorneo(tournamentType, []); // Guarda una lista vacía
+            saveClientesTorneo(tournamentType, []);
             selectedIndices = [];
             renderClients(tournamentType);
             initializeSortable();
             showToast("La planilla ha sido limpiada.", true);
         }
 
+        // === FUNCIÓN MODIFICADA CON CONFIRMACIÓN ===
         function closeTable() {
+            if (!confirm('¿Estás seguro de que quieres cerrar esta mesa?')) {
+                return;
+            }
             const tournamentType = document.getElementById('tournamentSelector').value;
             const clients = getClientesTorneo(tournamentType);
             
@@ -388,6 +396,23 @@
                 initializeSortable();
                 showToast(`Mesa ${lastTableNumber} cerrada.`, true);
             }
+        }
+
+        // === NUEVA FUNCIÓN AÑADIDA PARA REABRIR MESA ===
+        function reopenTable(breakMarkerIndex) {
+            if (!confirm('¿Estás seguro de que quieres reabrir esta mesa? Un jugador añadido podría no quedar en esta mesa si hay espacios libres en mesas anteriores.')) {
+                return;
+            }
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            let clients = getClientesTorneo(tournamentType);
+            
+            const tableNumber = clients[breakMarkerIndex].tableNumber;
+            clients.splice(breakMarkerIndex, 1);
+            
+            saveClientesTorneo(tournamentType, clients);
+            renderClients(tournamentType);
+            initializeSortable();
+            showToast(`Mesa ${tableNumber} ha sido reabierta.`, true);
         }
         
         function addClientToTournament() {
@@ -542,8 +567,6 @@
         }
 
         // --- LÓGICA DE MESA FINAL Y GANADORES ---
-        
-        // === FUNCIÓN MODIFICADA PARA RESETEAR PUNTAJES ===
         async function startFinal() {
             const tournamentType = document.getElementById('tournamentSelector').value;
             const allEntries = getClientesTorneo(tournamentType);
@@ -559,7 +582,6 @@
                 .sort((a,b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType))
                 .slice(0, rankingSize);
 
-            // Lógica para resetear los puntajes de los finalistas
             const rounds = getTournamentRounds(tournamentType);
             const resetFinalists = finalists.map(finalist => {
                 const cleanFinalist = {
@@ -567,9 +589,8 @@
                     nombre: finalist.nombre,
                     apellido: finalist.apellido,
                     rut: finalist.rut,
-                    color: finalist.color // Mantenemos el color si es de ruleta
+                    color: finalist.color
                 };
-                // Asigna un valor vacío a cada campo de puntaje para que el input aparezca en blanco
                 rounds.forEach(round => {
                     const scoreKey = round.toLowerCase().replace(/ /g, '');
                     cleanFinalist[scoreKey] = ''; 
@@ -577,7 +598,6 @@
                 return cleanFinalist;
             });
 
-            // Guardamos los finalistas con los puntajes ya reseteados
             localStorage.setItem(`finalistas_${tournamentType}`, JSON.stringify(resetFinalists));
             
             localStorage.setItem('tournament_view_state', 'final'); 
@@ -611,7 +631,6 @@
                 tr.insertCell().innerHTML = `<div class="p-2 font-semibold">${finalist.nombre} ${finalist.apellido}</div>`;
                 rounds.forEach(round => {
                     const scoreKey = round.toLowerCase().replace(/ /g, '');
-                    // Usamos formatNumberForDisplay para que los campos vacíos se muestren correctamente
                     const formattedScore = formatNumberForDisplay(finalist[scoreKey]);
                     tr.insertCell().innerHTML = `<div class="p-2"><input type="tel" value="${formattedScore}" oninput="formatNumericInput(this)" onchange="updateFinalistScore(${index},'${scoreKey}',this.value)" class="score-input"></div>`;
                 });
