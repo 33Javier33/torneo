@@ -95,8 +95,9 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div><label for="tournamentSelector" class="block font-bold text-lg mb-2">Seleccionar Torneo:</label><select id="tournamentSelector" onchange="changeTournament()" class="p-2 border rounded-md w-full"></select></div>
                 <div id="rouletteConfig" class="hidden"><label for="rouletteBallCount" class="block font-bold text-lg mb-2">Nº Bolitas:</label><input type="number" id="rouletteBallCount" value="3" min="1" max="10" class="p-2 border rounded-md w-full" onchange="saveRouletteConfig()"></div>
-                <div><label for="tournamentDate" class="block font-bold text-lg mb-2">Fecha:</label><input type="date" id="tournamentDate" class="p-2 border rounded-md w-full" onchange="handleDateChange()"></div>
+                <div><label for="tournamentDate" class="block font-bold text-lg mb-2">Fecha:</label><input type="date" id="tournamentDate" class="p-2 border rounded-md w-full" onchange="saveDateToLocalStorage()"></div>
                 <div><label for="registrationEndTime" class="block font-bold text-lg mb-2">Hora Cierre Inscripción:</label><input type="time" id="registrationEndTime" class="p-2 border rounded-md w-full" onchange="saveEndTime()"></div>
+                <!-- === CAMPO AÑADIDO === -->
                 <div class="md:col-span-2"><label for="tournamentDirector" class="block font-bold text-lg mb-2">Nombre del Encargado:</label><input type="text" id="tournamentDirector" placeholder="Nombre y Apellido" class="p-2 border rounded-md w-full" onchange="saveDirectorName()"></div>
             </div>
             <h3 class="text-xl font-bold mb-4 text-blue-900 border-b pb-2">Premios y Acciones</h3>
@@ -202,21 +203,7 @@
         let sortableInstance = null;
         let selectedClientRut = null;
 
-        // --- FUNCIONES AUXILIARES Y DE DATOS (MODIFICADAS PARA FECHA) ---
-        
-        /**
-         * Genera una clave única para localStorage basada en la fecha y el tipo de torneo.
-         * @param {string} baseKey - La clave base (ej. 'clientes', 'finalistas').
-         * @param {string} tournamentType - El identificador del torneo (ej. 'ruleta').
-         * @returns {string} La clave completa para localStorage (ej. '2023-10-27_clientes_ruleta').
-         */
-        function getDataKey(baseKey, tournamentType) {
-            const date = document.getElementById('tournamentDate').value;
-            // Si la fecha no está disponible, usa la fecha actual como respaldo.
-            const datePrefix = date || new Date().toISOString().split('T')[0];
-            return `${datePrefix}_${baseKey}_${tournamentType}`;
-        }
-
+        // --- FUNCIONES AUXILIARES Y DE DATOS ---
         function getTournamentRounds(tournamentType) {
             const tournament = TOURNAMENTS[tournamentType];
             if (tournament.type === 'roulette') {
@@ -233,26 +220,10 @@
             if (isSuccess) t.classList.add('success');
             setTimeout(() => t.classList.remove('show'), 3000); 
         }
-        
         function getClientesBase() { return JSON.parse(localStorage.getItem('clientes_base') || '[]'); }
-        
-        // Modificado para usar la clave dinámica basada en la fecha.
-        function getClientesTorneo(type) { 
-            const key = getDataKey('clientes', type);
-            return JSON.parse(localStorage.getItem(key) || '[]'); 
-        }
-        
-        // Modificado para usar la clave dinámica basada en la fecha.
-        function saveClientesTorneo(type, clients) { 
-            const key = getDataKey('clientes', type);
-            localStorage.setItem(key, JSON.stringify(clients)); 
-        }
-        
-        // Modificado para usar la clave dinámica basada en la fecha.
-        function getFinalists(type) { 
-            const key = getDataKey('finalistas', type);
-            return JSON.parse(localStorage.getItem(key) || '[]'); 
-        }
+        function getClientesTorneo(type) { return JSON.parse(localStorage.getItem(`clientes_${type}`) || '[]'); }
+        function saveClientesTorneo(type, clients) { localStorage.setItem(`clientes_${type}`, JSON.stringify(clients)); }
+        function getFinalists(type) { return JSON.parse(localStorage.getItem(`finalistas_${type}`) || '[]'); }
 
         function calculateTotal(client, tournamentType) {
             const cleanValue = (val) => parseInt(String(val || '0').replace(/\./g, ''));
@@ -562,7 +533,7 @@
             const bestEntries = getBestEntryPerPlayer(allEntries, tournamentType);
             if (bestEntries.length < rankingSize) { showToast(`Se necesitan ${rankingSize} jugadores únicos.`); return; }
             const finalists = bestEntries.sort((a,b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType)).slice(0, rankingSize);
-            saveFinalists(tournamentType, finalists); // Usará la nueva función con fecha
+            localStorage.setItem(`finalistas_${tournamentType}`, JSON.stringify(finalists));
             localStorage.setItem('tournament_view_state', 'final'); 
             showToast("Mesa final generada.", true); 
             showFinalView();
@@ -574,12 +545,7 @@
             showWinnersView(); 
             await exportToPDF({ isFinalReport: true });
         }
-        
-        // Modificado para usar la clave dinámica basada en la fecha.
-        function saveFinalists(type, finalists) { 
-            const key = getDataKey('finalistas', type);
-            localStorage.setItem(key, JSON.stringify(finalists)); 
-        }
+        function saveFinalists(type, finalists) { localStorage.setItem(`finalistas_${type}`, JSON.stringify(finalists)); }
 
         function renderFinalists() {
             const tournamentType = document.getElementById('tournamentSelector').value;
@@ -638,7 +604,7 @@
             }
         }
 
-        // --- EXPORTACIÓN Y ORDENAMIENTO ---
+        // --- EXPORTACIÓN Y ORDENAMIENTO (ACTUALIZADO) ---
         async function exportToPDF(options = { isFinalReport: false }) {
             try {
                 const { PDFDocument, rgb, StandardFonts } = PDFLib;
@@ -669,6 +635,9 @@
                 page.drawText(`- Cupones Canjeo: ${canjeoCount}`, { x: 60, y, font, size: 11 }); y -= 30;
 
                 page.drawText('Tabla de Clasificación', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
+                const isRoulette = tournament.type === 'roulette';
+                
+                // === CAMBIO: Se elimina la columna 'Color' del PDF para Ruleta ===
                 const headers = ['#', 'Cliente', 'RUT', 'Cupón', ...rounds, 'Total'];
                 const colWidths = [25, 150, 80, 50, ...Array(rounds.length).fill(40), 60];
                 
@@ -678,7 +647,7 @@
                 page.drawLine({ start: { x: 50, y: y + 5 }, end: { x: width - 50, y: y + 5 }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
 
                 clients.forEach((client, index) => {
-                    if (y < 40) { page = doc.addPage(); y = height - 50; }
+                    if (y < 40) { page = doc.addPage(); y = height - 50; /* Redibujar cabecera */ }
                     let cuponText = client.cuponTorneo ? 'Torneo' : (client.cuponCanjeo ? 'Canjeo' : 'Ninguno');
                     const rowData = [`${index + 1}`, `${client.nombre} ${client.apellido}`, client.rut, cuponText];
                     rounds.forEach(round => rowData.push(client[round.toLowerCase().replace(/ /g, '')] || '0'));
@@ -709,6 +678,7 @@
                     const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
                     const prizeConfig = [prizes.first || '0', prizes.second || '0', prizes.third || '0'];
                     y -= 30;
+                    // === CORRECCIÓN: Se elimina el emoji del trofeo que causaba el error ===
                     page.drawText('Podio de Ganadores', { x: 50, y, font: fontBold, size: 16 }); y -= 25;
                     const sortedFinalists = finalists.sort((a,b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
                     for (let i = 0; i < 3; i++) {
@@ -794,15 +764,7 @@
             const cleanValue = String(value).replace(/\D/g, '');
             return cleanValue ? new Intl.NumberFormat('es-CL').format(cleanValue) : '';
         }
-
-        /**
-         * Maneja el cambio de fecha, guarda la nueva fecha y recarga los datos del torneo.
-         */
-        function handleDateChange() {
-            localStorage.setItem('currentTournamentDate', document.getElementById('tournamentDate').value);
-            changeTournament(); // Recarga la vista con los datos de la nueva fecha.
-        }
-
+        function saveDateToLocalStorage() { localStorage.setItem('tournamentDate', document.getElementById('tournamentDate').value); }
         function saveDirectorName() { localStorage.setItem('tournamentDirector', document.getElementById('tournamentDirector').value); }
         function formatPrizePool(input) { formatNumericInput(input); }
         function formatRut(input) {
@@ -881,9 +843,17 @@
             });
             selector.value = localStorage.getItem('selectedTournament') || 'ruleta';
             
-            // Lógica de fecha modificada para cargar datos por día.
-            const lastDate = localStorage.getItem('currentTournamentDate') || new Date().toISOString().split('T')[0];
-            document.getElementById('tournamentDate').value = lastDate;
+            // --- LÓGICA DE FECHA MODIFICADA ---
+            // Se busca una fecha guardada para el torneo.
+            let tournamentDateValue = localStorage.getItem('tournamentDate');
+            if (!tournamentDateValue) {
+                // Si no se encuentra una fecha, se establece la fecha actual como la fecha de inicio del torneo.
+                // Esta fecha quedará guardada y no cambiará automáticamente después de la medianoche.
+                tournamentDateValue = new Date().toISOString().split('T')[0];
+                localStorage.setItem('tournamentDate', tournamentDateValue);
+            }
+            // Asigna la fecha (ya sea la guardada o la recién creada) al campo de fecha.
+            document.getElementById('tournamentDate').value = tournamentDateValue;
             
             // Cargar otros datos guardados
             document.getElementById('tournamentDirector').value = localStorage.getItem('tournamentDirector') || '';
@@ -900,8 +870,6 @@
             document.getElementById('registrationEndTime').value = localStorage.getItem('registrationEndTime') || '';
             document.getElementById('rouletteBallCount').value = localStorage.getItem('rouletteBallCount') || '3';
             localStorage.setItem('tournament_view_state', 'classification');
-            
-            // Carga inicial basada en la fecha y torneo seleccionados.
             changeTournament();
         });
     </script>
