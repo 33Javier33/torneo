@@ -106,7 +106,16 @@
                 <div><label for="secondPrize" class="block font-bold mb-1">2do Lugar $:</label><input type="text" id="secondPrize" placeholder="Ej: 150.000" class="p-2 border rounded-md w-full" oninput="formatPrizePool(this); savePrizes();"></div>
                 <div><label for="thirdPrize" class="block font-bold mb-1">3er Lugar $:</label><input type="text" id="thirdPrize" placeholder="Ej: 100.000" class="p-2 border rounded-md w-full" oninput="formatPrizePool(this); savePrizes();"></div>
             </div>
-            <div class="flex flex-wrap gap-4 justify-end">
+            <!-- === SECCIÓN DE GUARDAR/CARGAR AÑADIDA === -->
+            <div class="border-t pt-4 mt-4">
+                <h3 class="text-xl font-bold mb-4 text-blue-900">Guardar / Cargar Torneo</h3>
+                <div class="flex flex-wrap gap-4 justify-start">
+                    <button onclick="saveTournamentToFile()" class="bg-teal-600 text-white px-6 py-2 rounded-md font-bold hover:bg-teal-700 transition-colors">Guardar Torneo (JSON)</button>
+                    <button onclick="document.getElementById('loadTournamentInput').click()" class="bg-purple-600 text-white px-6 py-2 rounded-md font-bold hover:bg-purple-700 transition-colors">Cargar Torneo (JSON)</button>
+                    <input type="file" id="loadTournamentInput" class="hidden" accept=".json" onchange="loadTournamentFromFile(event)">
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-4 justify-end mt-6 border-t pt-4">
                 <button onclick="exportToPDF()" class="bg-red-600 text-white px-6 py-2 rounded-md font-bold hover:bg-red-700 transition-colors">Exportar PDF</button>
                 <button onclick="startFinal()" class="bg-yellow-500 text-white px-6 py-2 rounded-md font-bold hover:bg-yellow-600 transition-colors">Iniciar Final</button>
             </div>
@@ -281,7 +290,6 @@
             const totalColSpan = (isRoulette ? 5 : 4) + rounds.length + 1;
 
             clients.forEach((client, index) => {
-                // === LÓGICA MODIFICADA PARA REABRIR MESA ===
                 if (client.isTableBreak) {
                     const breakRow = tableBody.insertRow();
                     breakRow.className = 'table-break-row';
@@ -364,7 +372,6 @@
             showToast("La planilla ha sido limpiada.", true);
         }
 
-        // === FUNCIÓN MODIFICADA CON CONFIRMACIÓN ===
         function closeTable() {
             if (!confirm('¿Estás seguro de que quieres cerrar esta mesa?')) {
                 return;
@@ -398,9 +405,8 @@
             }
         }
 
-        // === NUEVA FUNCIÓN AÑADIDA PARA REABRIR MESA ===
         function reopenTable(breakMarkerIndex) {
-            if (!confirm('¿Estás seguro de que quieres reabrir esta mesa? Un jugador añadido podría no quedar en esta mesa si hay espacios libres en mesas anteriores.')) {
+            if (!confirm('¿Estás seguro de que quieres reabrir esta mesa?')) {
                 return;
             }
             const tournamentType = document.getElementById('tournamentSelector').value;
@@ -759,6 +765,96 @@
                 showToast("PDF exportado correctamente.", true);
             } catch (error) { console.error("Error al generar PDF:", error); showToast("Error al crear el PDF."); }
         }
+
+        // --- NUEVAS FUNCIONES PARA GUARDAR Y CARGAR ---
+        function saveTournamentToFile() {
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const clients = getClientesTorneo(tournamentType);
+            const tournamentDate = document.getElementById('tournamentDate').value;
+
+            const tournamentData = {
+                version: '1.0',
+                savedAt: new Date().toISOString(),
+                tournamentType: tournamentType,
+                date: tournamentDate,
+                director: localStorage.getItem('tournamentDirector') || '',
+                endTime: localStorage.getItem('registrationEndTime') || '',
+                prizePool: localStorage.getItem('prizePool') || '0',
+                prizes: JSON.parse(localStorage.getItem('tournamentPrizes') || '{}'),
+                participants: clients
+            };
+
+            if (TOURNAMENTS[tournamentType].type === 'roulette') {
+                tournamentData.rouletteBallCount = localStorage.getItem('rouletteBallCount') || '3';
+            }
+
+            const dataStr = JSON.stringify(tournamentData, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const fileName = `torneo-${tournamentType}-${tournamentDate}.json`;
+            
+            download(blob, fileName, "application/json");
+            showToast("Torneo guardado en archivo JSON.", true);
+        }
+
+        function loadTournamentFromFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    if (!data.tournamentType || !data.date || !data.participants) {
+                        throw new Error("El archivo no tiene el formato de torneo esperado.");
+                    }
+
+                    localStorage.setItem('selectedTournament', data.tournamentType);
+                    localStorage.setItem('tournamentDate', data.date);
+                    localStorage.setItem('tournamentDirector', data.director || '');
+                    localStorage.setItem('registrationEndTime', data.endTime || '');
+                    localStorage.setItem('prizePool', data.prizePool || '0');
+                    localStorage.setItem('tournamentPrizes', JSON.stringify(data.prizes || {}));
+                    
+                    if (data.rouletteBallCount) {
+                        localStorage.setItem('rouletteBallCount', data.rouletteBallCount);
+                    }
+                    saveClientesTorneo(data.tournamentType, data.participants);
+
+                    document.getElementById('tournamentSelector').value = data.tournamentType;
+                    
+                    // Actualizar campos del modal de configuración
+                    document.getElementById('tournamentDate').value = data.date;
+                    document.getElementById('tournamentDirector').value = data.director || '';
+                    document.getElementById('registrationEndTime').value = data.endTime || '';
+                    const prizePoolInput = document.getElementById('prizePoolInput');
+                    prizePoolInput.value = data.prizePool || '';
+                    formatPrizePool(prizePoolInput);
+                    const prizes = data.prizes || {};
+                    document.getElementById('firstPrize').value = prizes.first || '';
+                    document.getElementById('secondPrize').value = prizes.second || '';
+                    document.getElementById('thirdPrize').value = prizes.third || '';
+                    formatPrizePool(document.getElementById('firstPrize'));
+                    formatPrizePool(document.getElementById('secondPrize'));
+                    formatPrizePool(document.getElementById('thirdPrize'));
+                    if (data.rouletteBallCount) {
+                        document.getElementById('rouletteBallCount').value = data.rouletteBallCount;
+                    }
+
+                    changeTournament(); // Refresca toda la UI
+                    showToast(`Torneo '${TOURNAMENTS[data.tournamentType].name}' cargado.`, true);
+                    closeConfigModal();
+
+                } catch (error) {
+                    showToast("Error al cargar el archivo. " + error.message);
+                    console.error("Error parsing tournament file:", error);
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        }
+
 
         function toggleSelection(checkbox, index) {
             const tr = checkbox.closest('tr');
