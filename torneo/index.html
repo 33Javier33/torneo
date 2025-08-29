@@ -76,7 +76,6 @@
             color: #64748b;
         }
 
-        /* --- ESTILOS PARA TARJETA GIRATORIA --- */
         #prize-card-container {
             perspective: 1000px;
             min-height: 105px;
@@ -92,7 +91,6 @@
             transform: rotateY(180deg);
         }
 
-        /* --- ESTILOS PARA HIGHLIGHT DE TARJETA INSCRIPCIONES --- */
         #registration-card {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
@@ -164,7 +162,6 @@
             color: #e2e8f0;
         }
 
-        /* --- ESTILOS PARA MESA FINAL Y GANADORES --- */
         .highlight-gold { background-color: #fef9c3 !important; }
         .dark .highlight-gold { background-color: #78350f !important; }
         .highlight-silver { background-color: #f1f5f9 !important; }
@@ -190,6 +187,30 @@
         .podium-2 { background-color: #64748b; order: 1; min-height: 150px; }
         .podium-3 { background-color: #9a3412; order: 3; min-height: 120px; }
 
+        .chip-rack {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            padding-top: 8px;
+        }
+        .chip {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: 900;
+            font-size: 0.8rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2);
+            border: 3px solid white;
+            outline: 2px solid #ccc;
+        }
+
     </style>
 </head>
 <body>
@@ -203,20 +224,22 @@
         </label>
     </div>
     
-    <!-- === ENLACE MOVIDO A LA DERECHA === -->
-    <a href="https://torneo-flax.vercel.app/" class="fixed top-12 right-4 text-xs text-gray-400 hover:text-blue-500 transition-colors z-50">Ir a Planilla →</a>
-    <!-- =================================== -->
+    <a href="../" class="fixed top-12 right-4 text-xs text-gray-400 hover:text-blue-500 transition-colors z-50">Ir a Planilla →</a>
 
-    <!-- Vista de Clasificación (la que ya existe) -->
+    <!-- Vista de Clasificación -->
     <div id="classificationView" class="container">
         <div class="title-section">
             <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-2">Cargando Torneo...</h1>
             <p id="tournamentDate" class="text-xl font-bold text-gray-600"></p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div id="prize-card-container" class="card text-center">
                 <div id="prize-card-content"></div>
+            </div>
+            <div id="chip-card" class="card text-center hidden">
+                 <h2 class="text-lg font-bold text-gray-600">FICHAS EN JUEGO</h2>
+                 <div id="chip-rack" class="chip-rack"></div>
             </div>
             <div id="registration-card" class="card text-center">
                 <h2 class="text-lg font-bold text-gray-600">INSCRIPCIONES</h2>
@@ -258,9 +281,7 @@
         <div class="title-section">
             <h1 class="text-4xl md:text-5xl font-extrabold text-amber-500 dark:text-amber-400 mb-2">🏆 GANADORES DEL TORNEO 🏆</h1>
         </div>
-        <div id="winnersPodium" class="winner-podium">
-            <!-- El podio se generará aquí con JavaScript -->
-        </div>
+        <div id="winnersPodium" class="winner-podium"></div>
     </div>
 
 
@@ -273,11 +294,11 @@
 
         const TOURNAMENTS = {
             ruleta: { name: 'Torneo de Ruleta', type: 'roulette' },
-            draw_poker: { name: 'Torneo de Draw Poker', rounds: ['Puntaje'] },
-            blackjack: { name: 'Torneo de Blackjack', rounds: ['Puntaje'] },
+            draw_poker: { name: 'Torneo de Draw Poker', rounds: ['Puntaje'], type: 'cards' },
+            blackjack: { name: 'Torneo de Blackjack', rounds: ['Puntaje'], type: 'cards' },
             ruleta_vip: { name: 'Torneo de Ruleta VIP', type: 'roulette' },
-            draw_poker_vip: { name: 'Torneo de Draw Poker VIP', rounds: ['Puntaje'] },
-            blackjack_vip: { name: 'Torneo de Blackjack VIP', rounds: ['Puntaje'] }
+            draw_poker_vip: { name: 'Torneo de Draw Poker VIP', rounds: ['Puntaje'], type: 'cards' },
+            blackjack_vip: { name: 'Torneo de Blackjack VIP', rounds: ['Puntaje'], type: 'cards' }
         };
 
         let prizeViewIndex = 0;
@@ -290,6 +311,8 @@
             document.getElementById('classificationView').style.display = 'none';
             document.getElementById('finalView').style.display = 'none';
             document.getElementById('winnersView').style.display = 'none';
+
+            renderChipRack();
 
             switch (viewState) {
                 case 'final':
@@ -362,7 +385,12 @@
 
         function getTournamentType() { return localStorage.getItem('selectedTournament') || 'ruleta'; }
         function getClients() { return JSON.parse(localStorage.getItem(`clientes_${getTournamentType()}`) || '[]'); }
-        function formatNumber(num) { return Number(num).toLocaleString('es-CL'); }
+        
+        // === FUNCIÓN CORREGIDA ===
+        function formatNumber(num) {
+            return Number(num || 0).toLocaleString('es-CL');
+        }
+
         function getTournamentDate() {
             const dateStr = localStorage.getItem('tournamentDate');
             if (!dateStr) return 'Fecha no definida';
@@ -382,7 +410,7 @@
 
         function renderTournamentTable() {
             const tournamentType = getTournamentType();
-            const clients = getClients();
+            const clients = getClients().filter(c => !c.isTableBreak);
             const tournament = TOURNAMENTS[tournamentType];
             const rounds = getTournamentRounds(tournamentType);
             if (!tournament) return;
@@ -496,6 +524,35 @@
             }
         }
 
+        function renderChipRack() {
+            const tournamentType = getTournamentType();
+            const tournament = TOURNAMENTS[tournamentType];
+            const chipCard = document.getElementById('chip-card');
+            const rack = document.getElementById('chip-rack');
+
+            if (tournament.type !== 'cards') {
+                chipCard.classList.add('hidden');
+                return;
+            }
+
+            chipCard.classList.remove('hidden');
+            rack.innerHTML = '';
+            const chips = JSON.parse(localStorage.getItem('tournament_chips') || '[]');
+            
+            if (chips.length === 0) {
+                rack.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">No hay fichas definidas.</p>`;
+                return;
+            }
+
+            chips.forEach(chip => {
+                const chipEl = document.createElement('div');
+                chipEl.className = 'chip';
+                chipEl.style.backgroundColor = chip.color;
+                chipEl.textContent = formatNumber(chip.value);
+                rack.appendChild(chipEl);
+            });
+        }
+
         function checkRegistrationStatus() {
             const endTimeString = localStorage.getItem('registrationEndTime');
             const endTimeDisplay = document.getElementById('endTimeDisplay');
@@ -551,9 +608,15 @@
             setInterval(updateClock, 1000);
 
             window.addEventListener('storage', (event) => {
-                if (event.key.startsWith('clientes_') || event.key.startsWith('finalistas_') || ['tournamentPrizes', 'prizePool', 'selectedTournament', 'registrationEndTime', 'tournamentDate', 'rouletteBallCount', 'tournament_view_state'].includes(event.key)) {
-                    updateActiveView();
-                    if (['tournamentPrizes', 'prizePool'].includes(event.key)) {
+                const keysToWatch = [
+                    'clientes_', 'finalistas_', 'tournamentPrizes', 'prizePool', 
+                    'selectedTournament', 'registrationEndTime', 'tournamentDate', 
+                    'rouletteBallCount', 'tournament_view_state', 'tournament_chips'
+                ];
+
+                if (keysToWatch.some(key => event.key && (event.key.startsWith(key) || event.key === key))) {
+                     updateActiveView();
+                     if (['tournamentPrizes', 'prizePool'].includes(event.key)) {
                         clearInterval(prizeInterval);
                         prizeViewIndex = 0;
                         updatePrizeCard();
