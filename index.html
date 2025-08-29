@@ -106,7 +106,14 @@
                 <div><label for="secondPrize" class="block font-bold mb-1">2do Lugar $:</label><input type="text" id="secondPrize" placeholder="Ej: 150.000" class="p-2 border rounded-md w-full" oninput="formatPrizePool(this); savePrizes();"></div>
                 <div><label for="thirdPrize" class="block font-bold mb-1">3er Lugar $:</label><input type="text" id="thirdPrize" placeholder="Ej: 100.000" class="p-2 border rounded-md w-full" oninput="formatPrizePool(this); savePrizes();"></div>
             </div>
-            <!-- === SECCIÓN DE GUARDAR/CARGAR AÑADIDA === -->
+
+            <!-- === SECCIÓN DE FICHAS AÑADIDA === -->
+            <div id="chipConfigSection" class="border-t pt-4 mt-4 hidden">
+                <h3 class="text-xl font-bold mb-4 text-blue-900">Fichas del Torneo (Poker/Blackjack)</h3>
+                <div id="chipConfigContainer" class="space-y-2 mb-2"></div>
+                <button onclick="addChip()" class="bg-sky-600 text-white px-4 py-1 rounded-md font-bold text-sm hover:bg-sky-700 transition-colors">+ Añadir Ficha</button>
+            </div>
+
             <div class="border-t pt-4 mt-4">
                 <h3 class="text-xl font-bold mb-4 text-blue-900">Guardar / Cargar Torneo</h3>
                 <div class="flex flex-wrap gap-4 justify-start">
@@ -122,7 +129,6 @@
         </div>
     </div>
 
-    <!-- Color Palette Modal -->
     <div id="colorModal" class="modal-container">
         <div class="modal-content">
             <span class="close-btn" onclick="closeColorModal()">&times;</span>
@@ -202,17 +208,18 @@
         // --- CONFIGURACIÓN GLOBAL ---
         const TOURNAMENTS = {
             ruleta: { name: 'Torneo de Ruleta', playersPerTable: 5, type: 'roulette' },
-            draw_poker: { name: 'Torneo de Draw Poker', playersPerTable: 6, rounds: ['Puntaje'] },
-            blackjack: { name: 'Torneo de Blackjack', playersPerTable: 6, rounds: ['Puntaje'] },
+            draw_poker: { name: 'Torneo de Draw Poker', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' },
+            blackjack: { name: 'Torneo de Blackjack', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' },
             ruleta_vip: { name: 'Torneo de Ruleta VIP', playersPerTable: 5, type: 'roulette' },
-            draw_poker_vip: { name: 'Torneo de Draw Poker VIP', playersPerTable: 6, rounds: ['Puntaje'] },
-            blackjack_vip: { name: 'Torneo de Blackjack VIP', playersPerTable: 6, rounds: ['Puntaje'] }
+            draw_poker_vip: { name: 'Torneo de Draw Poker VIP', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' },
+            blackjack_vip: { name: 'Torneo de Blackjack VIP', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }
         };
         const PREDEFINED_COLORS = ['#E53935', '#D81B60', '#8E24AA', '#1E88E5', '#00897B', '#43A047', '#FDD835', '#FB8C00', '#6D4C41', '#455A64', '#FFFFFF', '#000000'];
 
         let selectedIndices = [];
         let sortableInstance = null;
         let selectedClientRut = null;
+        let chipColorPickerTarget = null;
 
         // --- FUNCIONES AUXILIARES Y DE DATOS ---
         function getTournamentRounds(tournamentType) {
@@ -235,6 +242,10 @@
         function getClientesTorneo(type) { return JSON.parse(localStorage.getItem(`clientes_${type}`) || '[]'); }
         function saveClientesTorneo(type, clients) { localStorage.setItem(`clientes_${type}`, JSON.stringify(clients)); }
         function getFinalists(type) { return JSON.parse(localStorage.getItem(`finalistas_${type}`) || '[]'); }
+        // === NUEVO: OBTENER/GUARDAR FICHAS ===
+        function getChips() { return JSON.parse(localStorage.getItem('tournament_chips') || '[]'); }
+        function saveChips(chips) { localStorage.setItem('tournament_chips', JSON.stringify(chips)); }
+
 
         function calculateTotal(client, tournamentType) {
             const cleanValue = (val) => parseInt(String(val || '0').replace(/\./g, ''));
@@ -326,7 +337,7 @@
                 tr.insertCell().innerHTML = `<div class="p-2 rounded hover:bg-sky-100" onclick="showRutModal('${client.rut}')">${client.nombre} ${client.apellido}</div>`;
 
                 if (isRoulette) {
-                    tr.insertCell().innerHTML = `<div class="p-2 flex justify-center items-center"><span class="color-swatch" style="background-color: ${client.color || '#FFFFFF'};" onclick="openColorModal(${index})"></span></div>`;
+                    tr.insertCell().innerHTML = `<div class="p-2 flex justify-center items-center"><span class="color-swatch" style="background-color: ${client.color || '#FFFFFF'};" onclick="openColorModal(${index}, 'player')"></span></div>`;
                 }
                 
                 let cuponTag = '<span class="bg-slate-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Ninguno</span>';
@@ -488,7 +499,7 @@
             showToast("Entrada eliminada.", true);
         }
         
-        // --- LÓGICA DE MODALES (Edit, Config, RUT, Color) ---
+        // --- LÓGICA DE MODALES ---
         function openEditModal(index) {
             const client = getClientesTorneo(document.getElementById('tournamentSelector').value)[index];
             if (!client || client.isTableBreak) return;
@@ -514,28 +525,32 @@
             }
         }
 
-        function openColorModal(index) {
-            const tournamentType = document.getElementById('tournamentSelector').value;
-            const client = getClientesTorneo(tournamentType)[index];
-            if (!client || client.isTableBreak) return;
+        function openColorModal(targetIndex, type) {
+            chipColorPickerTarget = { index: targetIndex, type: type }; // type can be 'player' or 'chip'
             const paletteContainer = document.getElementById('colorModalPalette');
             paletteContainer.innerHTML = '';
             PREDEFINED_COLORS.forEach(color => {
-                const isSelected = client.color && client.color.toUpperCase() === color.toUpperCase();
                 const swatch = document.createElement('span');
-                swatch.className = `color-swatch ${isSelected ? 'selected-color' : ''}`;
+                swatch.className = `color-swatch`;
                 swatch.style.backgroundColor = color;
                 swatch.style.width = '40px';
                 swatch.style.height = '40px';
                 swatch.onclick = () => {
-                    updateClientColor(index, color);
+                    if (chipColorPickerTarget.type === 'player') {
+                        updateClientColor(chipColorPickerTarget.index, color);
+                    } else if (chipColorPickerTarget.type === 'chip') {
+                        let chips = getChips();
+                        chips[chipColorPickerTarget.index].color = color;
+                        saveChips(chips);
+                        renderChipConfig();
+                    }
                     closeColorModal();
                 };
                 paletteContainer.appendChild(swatch);
             });
             document.getElementById('colorModal').style.display = 'flex';
         }
-        function closeColorModal() { document.getElementById('colorModal').style.display = 'none'; }
+        function closeColorModal() { document.getElementById('colorModal').style.display = 'none'; chipColorPickerTarget = null; }
 
         function showRutModal(rut) {
             const client = getClientesBase().find(c => c.rut === rut);
@@ -545,8 +560,45 @@
         }
         function closeRutModal() { document.getElementById('rutModal').style.display = 'none'; }
         
-        function openConfigModal() { document.getElementById('configModal').style.display = 'flex'; }
+        function openConfigModal() { 
+            renderChipConfig();
+            document.getElementById('configModal').style.display = 'flex'; 
+        }
         function closeConfigModal() { document.getElementById('configModal').style.display = 'none'; }
+
+        // --- LÓGICA DE FICHAS (NUEVO) ---
+        function renderChipConfig() {
+            const container = document.getElementById('chipConfigContainer');
+            container.innerHTML = '';
+            const chips = getChips();
+            chips.forEach((chip, index) => {
+                const chipRow = document.createElement('div');
+                chipRow.className = 'flex items-center gap-2';
+                chipRow.innerHTML = `
+                    <span class="color-swatch" style="background-color: ${chip.color};" onclick="openColorModal(${index}, 'chip')"></span>
+                    <input type="text" value="${formatNumberForDisplay(chip.value)}" oninput="this.value = formatNumberForDisplay(this.value.replace(/\\./g, ''))" onchange="updateChipValue(${index}, this.value)" placeholder="Valor Ficha" class="p-2 border rounded-md w-full">
+                    <button onclick="removeChip(${index})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">X</button>
+                `;
+                container.appendChild(chipRow);
+            });
+        }
+        function addChip() {
+            let chips = getChips();
+            chips.push({ value: '1000', color: '#6D4C41' });
+            saveChips(chips);
+            renderChipConfig();
+        }
+        function removeChip(index) {
+            let chips = getChips();
+            chips.splice(index, 1);
+            saveChips(chips);
+            renderChipConfig();
+        }
+        function updateChipValue(index, value) {
+            let chips = getChips();
+            chips[index].value = value.replace(/\./g, '');
+            saveChips(chips);
+        }
 
         // --- LÓGICA DE VISTAS (Clasificación, Final, Ganadores) ---
         const classificationView = document.getElementById('classificationView'), finalView = document.getElementById('finalView'), winnersView = document.getElementById('winnersView');
@@ -766,7 +818,6 @@
             } catch (error) { console.error("Error al generar PDF:", error); showToast("Error al crear el PDF."); }
         }
 
-        // --- NUEVAS FUNCIONES PARA GUARDAR Y CARGAR ---
         function saveTournamentToFile() {
             const tournamentType = document.getElementById('tournamentSelector').value;
             const clients = getClientesTorneo(tournamentType);
@@ -781,6 +832,7 @@
                 endTime: localStorage.getItem('registrationEndTime') || '',
                 prizePool: localStorage.getItem('prizePool') || '0',
                 prizes: JSON.parse(localStorage.getItem('tournamentPrizes') || '{}'),
+                chips: getChips(),
                 participants: clients
             };
 
@@ -815,6 +867,7 @@
                     localStorage.setItem('registrationEndTime', data.endTime || '');
                     localStorage.setItem('prizePool', data.prizePool || '0');
                     localStorage.setItem('tournamentPrizes', JSON.stringify(data.prizes || {}));
+                    saveChips(data.chips || []);
                     
                     if (data.rouletteBallCount) {
                         localStorage.setItem('rouletteBallCount', data.rouletteBallCount);
@@ -823,7 +876,6 @@
 
                     document.getElementById('tournamentSelector').value = data.tournamentType;
                     
-                    // Actualizar campos del modal de configuración
                     document.getElementById('tournamentDate').value = data.date;
                     document.getElementById('tournamentDirector').value = data.director || '';
                     document.getElementById('registrationEndTime').value = data.endTime || '';
@@ -841,7 +893,7 @@
                         document.getElementById('rouletteBallCount').value = data.rouletteBallCount;
                     }
 
-                    changeTournament(); // Refresca toda la UI
+                    changeTournament();
                     showToast(`Torneo '${TOURNAMENTS[data.tournamentType].name}' cargado.`, true);
                     closeConfigModal();
 
@@ -951,8 +1003,12 @@
 
         function changeTournament() {
             const tournamentType = document.getElementById('tournamentSelector').value;
+            const tournament = TOURNAMENTS[tournamentType];
             localStorage.setItem('selectedTournament', tournamentType);
-            document.getElementById('rouletteConfig').classList.toggle('hidden', TOURNAMENTS[tournamentType].type !== 'roulette');
+            
+            document.getElementById('rouletteConfig').classList.toggle('hidden', tournament.type !== 'roulette');
+            document.getElementById('chipConfigSection').classList.toggle('hidden', tournament.type !== 'cards');
+
             selectedIndices = []; 
             showClassificationView();
             renderClients(tournamentType); 
