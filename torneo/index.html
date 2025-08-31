@@ -177,10 +177,8 @@
 
     <div id="clock" class="clock">00:00:00</div>
     
-    <!-- Contenedor para logo y enlace (AHORA COMBINADOS) -->
-    <!-- El enlace <a> ahora envuelve la imagen y maneja el posicionamiento -->
-    <a href="../" class="fixed top-4 right-4 z-50 block transition-transform duration-200 hover:scale-105">
-        <!-- Se ha ajustado el tamaño a w-32 (128px) para que no sea tan grande -->
+    <!-- CAMBIO: Se ajustó el z-index a z-10 (capa inferior) -->
+    <a href="../" class="fixed top-4 right-4 z-10 block transition-transform duration-200 hover:scale-105">
         <img src="img/dreams1.png" 
              alt="Logo del Casino y enlace a Planilla" 
              class="w-32 h-auto rounded-lg shadow-lg"
@@ -188,7 +186,8 @@
     </a>
 
     <!-- Vistas -->
-    <div id="classificationView" class="container">
+    <!-- CAMBIO: Se añadió 'relative z-20' para poner el contenido en una capa superior -->
+    <div id="classificationView" class="container relative z-20">
         <div class="title-section">
             <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-2">Cargando...</h1>
             <p id="tournamentDate" class="text-xl font-bold text-gray-600"></p>
@@ -214,8 +213,10 @@
         </div>
         <div class="card"><div class="table-container"><table><thead id="tableHeader"></thead><tbody id="tableBody"></tbody></table></div></div>
     </div>
-    <div id="finalView" class="container" style="display: none;"><div class="title-section"><h1 class="text-4xl md:text-5xl font-extrabold text-red-700 dark:text-red-500 mb-2">Mesa Final</h1><p class="text-xl font-bold text-gray-600">¡Los mejores puntajes compiten ahora!</p></div><div class="card"><div class="table-container"><table><thead id="finalTableHeader"></thead><tbody id="finalTableBody"></tbody></table></div></div></div>
-    <div id="winnersView" class="container" style="display: none;"><div class="title-section"><h1 class="text-4xl md:text-5xl font-extrabold text-amber-500 dark:text-amber-400 mb-2">🏆 GANADORES DEL TORNEO 🏆</h1></div><div id="winnersPodium" class="winner-podium"></div></div>
+    <!-- CAMBIO: Se añadió 'relative z-20' para poner el contenido en una capa superior -->
+    <div id="finalView" class="container relative z-20" style="display: none;"><div class="title-section"><h1 class="text-4xl md:text-5xl font-extrabold text-red-700 dark:text-red-500 mb-2">Mesa Final</h1><p class="text-xl font-bold text-gray-600">¡Los mejores puntajes compiten ahora!</p></div><div class="card"><div class="table-container"><table><thead id="finalTableHeader"></thead><tbody id="finalTableBody"></tbody></table></div></div></div>
+    <!-- CAMBIO: Se añadió 'relative z-20' para poner el contenido en una capa superior -->
+    <div id="winnersView" class="container relative z-20" style="display: none;"><div class="title-section"><h1 class="text-4xl md:text-5xl font-extrabold text-amber-500 dark:text-amber-400 mb-2">🏆 GANADORES DEL TORNEO 🏆</h1></div><div id="winnersPodium" class="winner-podium"></div></div>
 
     <footer class="mt-auto pt-8 text-center text-gray-500 text-sm"><p>CarlosPN Interactive®</p></footer>
 
@@ -592,4 +593,5 @@
     </script>
 </body>
 </html>
+
 
