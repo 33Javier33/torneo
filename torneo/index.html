@@ -177,12 +177,15 @@
 
     <div id="clock" class="clock">00:00:00</div>
     
-    <!-- Contenedor para logo y enlace -->
-    <div class="fixed top-4 right-4 z-50 flex flex-col items-end gap-4">
-        <a href="../" class="text-sm bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm px-3 py-1 rounded-md text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors shadow-md">Ir a Planilla →</a>
-        <!-- CAMBIO: Se cambió a un logo rectangular con esquinas redondeadas -->
-        <img src="img/dreams1.png" alt="Logo del Casino" class="w-full h-full object-cover rounded-md" onerror="this.onerror=null;this.src='https://placehold.co/100x100/0f172a/b99d6b?text=Logo';">
-    </div>
+    <!-- Contenedor para logo y enlace (AHORA COMBINADOS) -->
+    <!-- El enlace <a> ahora envuelve la imagen y maneja el posicionamiento -->
+    <a href="../" class="fixed top-4 right-4 z-50 block transition-transform duration-200 hover:scale-105">
+        <!-- Se ha ajustado el tamaño a w-32 (128px) para que no sea tan grande -->
+        <img src="img/dreams1.png" 
+             alt="Logo del Casino y enlace a Planilla" 
+             class="w-32 h-auto rounded-lg shadow-lg"
+             onerror="this.onerror=null;this.src='https://placehold.co/120x90/1e293b/f1f5f9?text=LOGO';">
+    </a>
 
     <!-- Vistas -->
     <div id="classificationView" class="container">
