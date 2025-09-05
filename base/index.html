@@ -19,7 +19,6 @@
         }
         .toast.show { visibility: visible; opacity: 1; }
 
-        /* Estilos para Modales */
         .modal-container { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background-color: rgba(0, 0, 0, 0.6); display: none; 
@@ -49,20 +48,31 @@
         </div>
 
         <div class="bg-white p-6 rounded-lg shadow-xl">
-            <div class="flex flex-col md:flex-row gap-4 mb-4 justify-between items-center">
-                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Buscar por nombre o apellido..." class="p-2 border rounded-md w-full md:w-1/2">
-                <button onclick="openAddClientModal()" class="bg-blue-600 text-white px-6 py-2 rounded-md font-bold hover:bg-blue-700 transition-colors w-full md:w-auto">
-                    Añadir y Gestionar Clientes
-                </button>
+            <div class="mb-4">
+                <div class="flex flex-col md:flex-row gap-4 justify-between items-center">
+                    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Buscar por nombre, apellido o RUT..." class="p-2 border rounded-md w-full md:w-1/2">
+                    <button onclick="openAddClientModal()" class="bg-blue-600 text-white px-6 py-2 rounded-md font-bold hover:bg-blue-700 transition-colors w-full md:w-auto">
+                        Añadir y Gestionar Clientes
+                    </button>
+                </div>
+                <div id="searchHelper" class="hidden mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                    <p id="searchHelperMessage" class="mb-2 font-semibold text-slate-700"></p>
+                    <div class="flex flex-wrap gap-2">
+                        <input type="text" id="helperRut" placeholder="RUT del nuevo cliente" oninput="formatRut(this)" maxlength="12" class="flex-grow p-2 border rounded-md min-w-[150px]">
+                        <button onclick="prepareAddClient()" class="bg-emerald-600 text-white px-6 py-2 rounded-md font-bold hover:bg-emerald-700 transition-colors">
+                            Añadir Cliente
+                        </button>
+                    </div>
+                </div>
             </div>
             
             <div class="overflow-x-auto">
                 <table id="clientTable" class="min-w-full bg-white">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="py-3 px-4 text-left">Nombre</th>
+                            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-200" onclick="sortTable('nombre')">Nombre ⇅</th>
                             <th class="py-3 px-4 text-left">Apellido</th>
-                            <th class="py-3 px-4 text-left">RUT</th>
+                            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-200" onclick="sortTable('rut')">RUT ⇅</th>
                             <th class="py-3 px-4 text-center">Acciones</th>
                         </tr>
                     </thead>
@@ -78,12 +88,13 @@
             <span class="close-btn" onclick="closeAddClientModal()">&times;</span>
             <h2 class="text-2xl font-bold mb-4">Gestión de Clientes</h2>
             
-            <div class="flex flex-wrap gap-2 mb-4">
+            <div class="flex flex-wrap gap-2 mb-2">
                 <input type="text" id="addNombre" placeholder="Nombre" class="flex-grow p-2 border rounded-md min-w-[150px]">
                 <input type="text" id="addApellido" placeholder="Apellido" class="flex-grow p-2 border rounded-md min-w-[150px]">
-                <input type="text" id="addRut" placeholder="RUT" oninput="formatRut(this)" maxlength="12" class="flex-grow p-2 border rounded-md min-w-[150px]">
-                <button onclick="addClient()" class="bg-green-600 text-white px-6 py-2 rounded-md font-bold hover:bg-green-700 transition-colors flex-grow sm:flex-grow-0">Añadir</button>
+                <input type="text" id="addRut" placeholder="RUT" oninput="formatRut(this); checkExistingRut()" maxlength="12" class="flex-grow p-2 border rounded-md min-w-[150px]">
+                <button id="addClientButton" onclick="addClient()" class="bg-green-600 text-white px-6 py-2 rounded-md font-bold hover:bg-green-700 transition-colors flex-grow sm:flex-grow-0">Añadir</button>
             </div>
+            <div id="rutMessage" class="h-4 text-sm text-red-600 mb-4"></div>
 
             <div class="border-t pt-4 mt-4">
                 <h3 class="text-xl font-bold mb-4">Importar / Exportar</h3>
@@ -95,7 +106,34 @@
             </div>
         </div>
     </div>
-
+    <div id="editClientModal" class="modal-container">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeEditClientModal()">&times;</span>
+            <h2 class="text-2xl font-bold mb-6">Editar Cliente</h2>
+            <input type="hidden" id="editClientIndex">
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="editNombre" class="block font-bold mb-1">Nombre:</label>
+                    <input type="text" id="editNombre" class="w-full p-2 border rounded-md">
+                </div>
+                <div>
+                    <label for="editApellido" class="block font-bold mb-1">Apellido:</label>
+                    <input type="text" id="editApellido" class="w-full p-2 border rounded-md">
+                </div>
+                <div>
+                    <label for="editRut" class="block font-bold mb-1">RUT:</label>
+                    <input type="text" id="editRut" oninput="formatRut(this)" maxlength="12" class="w-full p-2 border rounded-md">
+                </div>
+            </div>
+            
+            <div class="mt-8 flex justify-end">
+                <button onclick="saveClientChanges()" class="bg-blue-600 text-white px-8 py-2 rounded-md font-bold hover:bg-blue-700 transition-colors">
+                    Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
     <div id="deleteConfirmationModal" class="modal-container">
          <div class="modal-content" style="width: 450px;">
             <h3 class="text-2xl font-bold text-gray-800 mb-4">Confirmar Eliminación</h3>
@@ -113,6 +151,7 @@
 
     <script>
         let clientToDeleteIndex = null;
+        let sortState = { column: null, direction: 'asc' };
 
         function showToast(message) {
             const toast = document.getElementById('toast');
@@ -129,64 +168,106 @@
             localStorage.setItem('clientes_base', JSON.stringify(clients));
         }
 
-        function renderClients() {
-            const clients = getClients();
+        function renderClients(clientList = null) {
+            const clients = clientList || getClients();
+            const masterClientList = getClients(); // Siempre la lista original para el índice
             const tableBody = document.querySelector('#clientTable tbody');
             tableBody.innerHTML = '';
             
-            clients.forEach((client, index) => {
+            clients.forEach((client) => {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-gray-50 transition-colors border-b';
                 
+                const originalIndex = masterClientList.findIndex(c => c.rut === client.rut);
+
                 tr.innerHTML = `
                     <td class="py-3 px-4">${client.nombre}</td>
                     <td class="py-3 px-4">${client.apellido}</td>
                     <td class="py-3 px-4">${client.rut}</td>
-                    <td class="py-3 px-4 text-center">
-                        <button onclick="showDeleteModal(${index})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">Eliminar</button>
+                    <td class="py-3 px-4 text-center space-x-2">
+                        <button onclick="openEditClientModal(${originalIndex})" class="bg-amber-500 text-white px-3 py-1 rounded-md text-xs hover:bg-amber-600">Editar</button>
+                        <button onclick="showDeleteModalByIndex(${originalIndex})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">Eliminar</button>
                     </td>
                 `;
                 tableBody.appendChild(tr);
             });
-            filterTable(); // Re-aplicar filtro después de renderizar
+            filterTable();
         }
 
         function filterTable() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const searchInput = document.getElementById('searchInput');
+            const searchTerm = searchInput.value.toLowerCase();
             const tableBody = document.querySelector('#clientTable tbody');
             const rows = tableBody.getElementsByTagName('tr');
+            const searchHelper = document.getElementById('searchHelper');
+            const helperMessage = document.getElementById('searchHelperMessage');
 
+            let visibleRows = 0;
             for (let i = 0; i < rows.length; i++) {
-                const nombreCell = rows[i].getElementsByTagName('td')[0];
-                const apellidoCell = rows[i].getElementsByTagName('td')[1];
-                if (nombreCell && apellidoCell) {
-                    const fullName = (nombreCell.textContent + ' ' + apellidoCell.textContent).toLowerCase();
-                    if (fullName.includes(searchTerm)) {
-                        rows[i].style.display = '';
-                    } else {
-                        rows[i].style.display = 'none';
-                    }
+                const nombre = rows[i].cells[0].textContent.toLowerCase();
+                const apellido = rows[i].cells[1].textContent.toLowerCase();
+                const rut = rows[i].cells[2].textContent.toLowerCase();
+
+                if (nombre.includes(searchTerm) || apellido.includes(searchTerm) || rut.includes(searchTerm)) {
+                    rows[i].style.display = '';
+                    visibleRows++;
+                } else {
+                    rows[i].style.display = 'none';
                 }
             }
+
+            if (searchTerm.length > 1 && visibleRows === 0) {
+                helperMessage.textContent = `"${searchInput.value}" no fue encontrado. Añádelo:`;
+                searchHelper.classList.remove('hidden');
+            } else {
+                searchHelper.classList.add('hidden');
+            }
+        }
+        
+        function prepareAddClient() {
+            const searchInput = document.getElementById('searchInput');
+            const helperRutInput = document.getElementById('helperRut');
+            const fullName = searchInput.value.trim();
+            const rut = helperRutInput.value.trim();
+
+            if (!fullName) {
+                return showToast("El nombre en la barra de búsqueda no puede estar vacío.");
+            }
+            if (!validateRut(rut)) {
+                return showToast("El formato del RUT no es válido. Ej: 12.345.678-9");
+            }
+            if (getClients().some(client => client.rut === rut)) {
+                return showToast("Este RUT ya está registrado. Búscalo en la tabla.");
+            }
+
+            openAddClientModal();
+            const nameParts = fullName.split(' ');
+            const apellido = nameParts.length > 1 ? nameParts.pop() : '';
+            const nombre = nameParts.join(' ');
+            
+            document.getElementById('addNombre').value = nombre;
+            document.getElementById('addApellido').value = apellido;
+            document.getElementById('addRut').value = rut;
+            
+            searchInput.value = '';
+            helperRutInput.value = '';
+            filterTable();
         }
 
+
         function formatRut(input) {
-            let rut = input.value.replace(/[^\dkK]/g, '');
-            rut = rut.replace(/^0+/, '');
-            
+            let rut = input.value.replace(/[^\dkK]/g, '').replace(/^0+/, '');
             if (rut.length > 1) {
                 let body = rut.slice(0, -1);
                 let dv = rut.slice(-1).toUpperCase();
-                let formattedBody = new Intl.NumberFormat('es-CL').format(body);
-                input.value = `${formattedBody}-${dv}`;
+                input.value = `${new Intl.NumberFormat('es-CL').format(body)}-${dv}`;
             } else {
                 input.value = rut;
             }
         }
 
         function validateRut(rut) {
-            const regex = /^[0-9]{1,2}\.[0-9]{3}\.[0-9]{3}-[0-9kK]{1}$/;
-            return regex.test(rut);
+            return /^[0-9]{1,2}\.[0-9]{3}\.[0-9]{3}-[0-9kK]{1}$/.test(rut);
         }
 
         function addClient() {
@@ -199,39 +280,118 @@
             const rut = rutInput.value.trim();
 
             if (!nombre || !apellido || !rut) {
-                showToast("Todos los campos son obligatorios.");
-                return;
+                return showToast("Todos los campos son obligatorios.");
             }
-
             if (!validateRut(rut)) {
-                showToast("El formato del RUT no es válido. Ej: 12.345.678-9");
-                return;
+                return showToast("El formato del RUT no es válido. Ej: 12.345.678-9");
             }
 
             const clients = getClients();
             if (clients.some(client => client.rut === rut)) {
-                showToast("Un cliente con este RUT ya existe.");
-                return;
+                return showToast("Un cliente con este RUT ya existe.");
             }
 
             clients.push({ nombre, apellido, rut });
             saveClients(clients);
             renderClients();
-
-            nombreInput.value = '';
-            apellidoInput.value = '';
-            rutInput.value = '';
+            closeAddClientModal();
             showToast("Cliente añadido con éxito.");
         }
 
+        function checkExistingRut() {
+            const rutInput = document.getElementById('addRut');
+            const nombreInput = document.getElementById('addNombre');
+            const apellidoInput = document.getElementById('addApellido');
+            const addButton = document.getElementById('addClientButton');
+            const messageDiv = document.getElementById('rutMessage');
+            
+            const rut = rutInput.value.trim();
+            if (!rut) {
+                nombreInput.disabled = false;
+                apellidoInput.disabled = false;
+                addButton.disabled = false;
+                messageDiv.textContent = '';
+                return;
+            }
+
+            const existingClient = getClients().find(client => client.rut === rut);
+
+            if (existingClient) {
+                nombreInput.value = existingClient.nombre;
+                apellidoInput.value = existingClient.apellido;
+                nombreInput.disabled = true;
+                apellidoInput.disabled = true;
+                addButton.disabled = true;
+                messageDiv.textContent = 'Este RUT ya se encuentra registrado.';
+            } else {
+                nombreInput.disabled = false;
+                apellidoInput.disabled = false;
+                addButton.disabled = false;
+                messageDiv.textContent = '';
+            }
+        }
+
         function openAddClientModal() {
+            document.getElementById('addNombre').value = '';
+            document.getElementById('addApellido').value = '';
+            document.getElementById('addRut').value = '';
+            checkExistingRut();
             document.getElementById('addClientModal').style.display = 'flex';
         }
         function closeAddClientModal() {
             document.getElementById('addClientModal').style.display = 'none';
         }
 
-        function showDeleteModal(index) {
+        // --- INICIO: Funciones para Editar Cliente ---
+        function openEditClientModal(index) {
+            const clients = getClients();
+            const client = clients[index];
+            if (!client) return;
+
+            document.getElementById('editClientIndex').value = index;
+            document.getElementById('editNombre').value = client.nombre;
+            document.getElementById('editApellido').value = client.apellido;
+            document.getElementById('editRut').value = client.rut;
+            
+            document.getElementById('editClientModal').style.display = 'flex';
+        }
+
+        function closeEditClientModal() {
+            document.getElementById('editClientModal').style.display = 'none';
+        }
+
+        function saveClientChanges() {
+            const index = document.getElementById('editClientIndex').value;
+            const newNombre = document.getElementById('editNombre').value.trim();
+            const newApellido = document.getElementById('editApellido').value.trim();
+            const newRut = document.getElementById('editRut').value.trim();
+            
+            if (!newNombre || !newApellido || !newRut) {
+                return showToast("Todos los campos son obligatorios.");
+            }
+            if (!validateRut(newRut)) {
+                return showToast("El formato del RUT no es válido. Ej: 12.345.678-9");
+            }
+            
+            const clients = getClients();
+            const existingClient = clients.find((client, i) => client.rut === newRut && i != index);
+            if (existingClient) {
+                return showToast("El nuevo RUT ya pertenece a otro cliente.");
+            }
+
+            clients[index].nombre = newNombre;
+            clients[index].apellido = newApellido;
+            clients[index].rut = newRut;
+            
+            saveClients(clients);
+            renderClients();
+            closeEditClientModal();
+            showToast("Cliente actualizado con éxito.");
+        }
+        // --- FIN: Funciones para Editar Cliente ---
+
+
+        function showDeleteModalByIndex(index) {
             clientToDeleteIndex = index;
             document.getElementById('deleteConfirmationModal').style.display = 'flex';
         }
@@ -256,23 +416,58 @@
             hideDeleteModal();
         }
 
+        function sortTable(column) {
+            if (sortState.column === column) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = column;
+                sortState.direction = 'asc';
+            }
+
+            const clientsToSort = getClients();
+            const isAsc = sortState.direction === 'asc';
+
+            clientsToSort.sort((a, b) => {
+                let valA, valB;
+                if (column === 'nombre') {
+                    valA = a.nombre.toLowerCase();
+                    valB = b.nombre.toLowerCase();
+                } else {
+                    valA = parseInt(a.rut.split('-')[0].replace(/\./g, ''), 10);
+                    valB = parseInt(b.rut.split('-')[0].replace(/\./g, ''), 10);
+                }
+
+                if (valA < valB) return isAsc ? -1 : 1;
+                if (valA > valB) return isAsc ? 1 : -1;
+                return 0;
+            });
+            
+            updateSortHeaders();
+            renderClients(clientsToSort);
+        }
+        
+        function updateSortHeaders() {
+            document.querySelectorAll('#clientTable th[onclick]').forEach(th => {
+                let baseText = th.textContent.replace(/ [↑↓⇅]/, '');
+                if (th.textContent.toLowerCase().includes(sortState.column)) {
+                    th.textContent = `${baseText} ${sortState.direction === 'asc' ? '↑' : '↓'}`;
+                } else {
+                    th.textContent = `${baseText} ⇅`;
+                }
+            });
+        }
+
         function exportClients() {
             const clients = getClients();
-            if (clients.length === 0) {
-                showToast("No hay clientes para exportar.");
-                return;
-            }
+            if (clients.length === 0) return showToast("No hay clientes para exportar.");
+            
             const dataStr = JSON.stringify(clients, null, 2);
             const blob = new Blob([dataStr], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            
             const a = document.createElement('a');
-            a.href = url;
+            a.href = URL.createObjectURL(blob);
             a.download = 'clientes.json';
-            document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(a.href);
             showToast("Clientes exportados correctamente.");
         }
 
@@ -283,16 +478,14 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const importedClients = JSON.parse(e.target.result);
-                    if (!Array.isArray(importedClients)) {
-                        throw new Error("El archivo JSON no es una lista válida.");
-                    }
+                    const imported = JSON.parse(e.target.result);
+                    if (!Array.isArray(imported)) throw new Error("JSON no es una lista.");
 
                     const currentClients = getClients();
                     const currentRuts = new Set(currentClients.map(c => c.rut));
                     let addedCount = 0;
 
-                    importedClients.forEach(newClient => {
+                    imported.forEach(newClient => {
                         if (newClient.nombre && newClient.rut && !currentRuts.has(newClient.rut)) {
                             currentClients.push(newClient);
                             currentRuts.add(newClient.rut);
@@ -303,10 +496,8 @@
                     saveClients(currentClients);
                     renderClients();
                     showToast(`${addedCount} cliente(s) nuevo(s) importado(s).`);
-
                 } catch (error) {
-                    showToast("Error al leer el archivo JSON. Asegúrate de que el formato sea correcto.");
-                    console.error(error);
+                    showToast("Error al leer el archivo JSON: " + error.message);
                 } finally {
                     event.target.value = '';
                 }
@@ -319,12 +510,9 @@
             document.getElementById('confirmDeleteButton').addEventListener('click', confirmAndDelete);
 
             window.addEventListener('click', (event) => {
-                if (event.target == document.getElementById('addClientModal')) {
-                    closeAddClientModal();
-                }
-                if (event.target == document.getElementById('deleteConfirmationModal')) {
-                    hideDeleteModal();
-                }
+                if (event.target == document.getElementById('addClientModal')) closeAddClientModal();
+                if (event.target == document.getElementById('editClientModal')) closeEditClientModal();
+                if (event.target == document.getElementById('deleteConfirmationModal')) hideDeleteModal();
             });
         });
     </script>
