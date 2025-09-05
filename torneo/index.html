@@ -8,7 +8,6 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         
-        /* --- CAMBIO: Fondo de mosaico --- */
         body {
             font-family: 'Inter', sans-serif;
             color: #1e293b;
@@ -16,18 +15,22 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding: 1.5rem;
+            padding: 1.5rem 0;
             box-sizing: border-box;
-            /* Fondo con capa de color semitransparente y la imagen repetida */
-            background-color: #f0f4f8; /* Fallback color */
+            background-color: #f0f4f8;
             background: 
                 linear-gradient(rgba(240, 244, 248, 0.9), rgba(240, 244, 248, 0.9)),
                 url('img/dreams1.png');
-            background-attachment: fixed; /* El fondo no se desplaza con el scroll */
+            background-attachment: fixed;
         }
+        /* --- CAMBIO: Se añade margin auto para asegurar el centrado --- */
         .container {
             width: 100%;
             max-width: 1600px;
+            padding: 0 1.5rem;
+            box-sizing: border-box;
+            margin-left: auto;
+            margin-right: auto;
         }
         .card {
             background-color: white;
@@ -81,10 +84,8 @@
             font-weight: 700;
             color: #64748b;
         }
-
         #prize-card-container {
             perspective: 1000px;
-            min-height: 105px;
         }
         #prize-card-content {
             position: relative;
@@ -97,10 +98,9 @@
             transform: rotateY(180deg);
         }
         
-        /* --- CAMBIO: Fondo de mosaico para modo oscuro --- */
         body.dark { 
             color: #e2e8f0;
-            background-color: #0f172a; /* Fallback color */
+            background-color: #0f172a;
             background:
                 linear-gradient(rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95)),
                 url('img/dreams1.png');
@@ -210,11 +210,14 @@
              onerror="this.onerror=null;this.src='https://placehold.co/120x90/1e293b/f1f5f9?text=LOGO';">
     </a>
 
-    <div id="classificationView" class="container relative z-20">
-        <div class="title-section">
-            <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-2">Cargando...</h1>
+    <div id="classificationView" class="w-full relative z-20">
+        <div class="container">
+            <div class="title-section">
+                <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-2">Cargando...</h1>
+            </div>
         </div>
-        <div id="top-cards-grid" class="grid grid-cols-1 gap-4 mb-6 transition-all duration-500 ease-in-out">
+
+        <div id="top-cards-grid" class="grid gap-4 mb-6 transition-all duration-500 ease-in-out w-full px-6 box-border">
             <div id="prize-card-container" class="card text-center">
                 <div id="prize-card-content"></div>
             </div>
@@ -237,13 +240,16 @@
             
             <div id="summary-card" class="card text-center hidden"></div>
         </div>
-        <div class="card"><div class="table-container"><table><thead id="tableHeader"></thead><tbody id="tableBody"></tbody></table></div></div>
+
+        <div class="container">
+            <div class="card"><div class="table-container"><table><thead id="tableHeader"></thead><tbody id="tableBody"></tbody></table></div></div>
+        </div>
     </div>
 
     <div id="finalView" class="container relative z-20" style="display: none;"><div class="title-section"><h1 class="text-4xl md:text-5xl font-extrabold text-red-700 dark:text-red-500 mb-2">Mesa Final</h1><p class="text-xl font-bold text-gray-600">¡Los mejores puntajes compiten ahora!</p></div><div class="card"><div class="table-container"><table><thead id="finalTableHeader"></thead><tbody id="finalTableBody"></tbody></table></div></div></div>
     <div id="winnersView" class="container relative z-20" style="display: none;"><div class="title-section"><h1 class="text-4xl md:text-5xl font-extrabold text-amber-500 dark:text-amber-400 mb-2">🏆 GANADORES DEL TORNEO 🏆</h1></div><div id="winnersPodium" class="winner-podium"></div></div>
 
-    <footer class="mt-auto pt-8 text-center text-gray-500 text-sm"><p>CarlosPN Interactive®</p></footer>
+    <footer class="container mt-auto pt-8 text-center text-gray-500 text-sm"><p>CarlosPN Interactive®</p></footer>
 
     <script>
         const TOURNAMENTS = {
@@ -306,9 +312,11 @@
             ];
             const visibleCards = cards.filter(card => card && !card.classList.contains('hidden'));
             const visibleCount = visibleCards.length;
-            grid.classList.remove('md:grid-cols-1', 'md:grid-cols-2', 'md:grid-cols-3');
+            
+            grid.classList.remove('grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4');
+            
             if (visibleCount > 0) {
-                grid.classList.add(`md:grid-cols-${visibleCount}`);
+                grid.classList.add(`grid-cols-${visibleCount}`);
             }
         }
         
@@ -326,7 +334,7 @@
             const currentView = views[prizeViewIndex];
             contentEl.classList.add('prize-exiting');
             setTimeout(() => {
-                contentEl.innerHTML = `<h2 class="text-lg font-bold text-gray-600 dark:text-gray-400">${currentView.title}</h2><p class="text-4xl font-extrabold mt-1 ${currentView.color}">${currentView.value}</p>`;
+                contentEl.innerHTML = `<h2 class="text-lg font-bold text-gray-600 dark:text-gray-400">${currentView.title}</h2><p class="text-2xl md:text-4xl font-extrabold mt-1 ${currentView.color}">${currentView.value}</p>`;
                 contentEl.classList.remove('prize-exiting');
             }, 300);
             prizeViewIndex = (prizeViewIndex + 1) % views.length;
@@ -466,34 +474,13 @@
             const tournament = TOURNAMENTS[tournamentType];
             const limits = JSON.parse(localStorage.getItem('gameLimits') || '{}');
             const limitsContent = document.getElementById('chip-card-limits-content');
-            
             if (!limitsContent || !tournament) return;
-
             let min, max;
-            if (tournament.type === 'cards') {
-                min = limits.minBet;
-                max = limits.maxBet;
-            } 
-            else if (tournament.type === 'roulette') {
-                min = limits.minPleno;
-                max = limits.maxPleno;
-            }
-
+            if (tournament.type === 'cards') { min = limits.minBet; max = limits.maxBet; } 
+            else if (tournament.type === 'roulette') { min = limits.minPleno; max = limits.maxPleno; }
             if (min || max) {
-                limitsContent.innerHTML = `
-                    <div class="flex justify-around items-center w-full">
-                        <div>
-                            <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÍNIMO</h3>
-                            <p class="text-xl font-extrabold text-green-600 dark:text-green-400">$${formatNumber(min)}</p>
-                        </div>
-                        <div>
-                            <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÁXIMO</h3>
-                            <p class="text-xl font-extrabold text-red-600 dark:text-red-400">$${formatNumber(max)}</p>
-                        </div>
-                    </div>`;
-            } else {
-                 limitsContent.innerHTML = '';
-            }
+                limitsContent.innerHTML = `<div class="flex justify-around items-center w-full"><div><h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÍNIMO</h3><p class="text-lg md:text-xl font-extrabold text-green-600 dark:text-green-400">$${formatNumber(min)}</p></div><div><h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÁXIMO</h3><p class="text-lg md:text-xl font-extrabold text-red-600 dark:text-red-400">$${formatNumber(max)}</p></div></div>`;
+            } else { limitsContent.innerHTML = ''; }
         }
 
         function renderChipRack() {
@@ -501,10 +488,8 @@
             const tournament = TOURNAMENTS[tournamentType];
             const chipCard = document.getElementById('chip-card');
             const rack = document.getElementById('chip-rack');
-            
-            if (tournament.type !== 'cards') {
-                chipCard.classList.add('hidden');
-            } else {
+            if (tournament.type !== 'cards') { chipCard.classList.add('hidden'); } 
+            else {
                 chipCard.classList.remove('hidden');
                 rack.innerHTML = '';
                 const chips = JSON.parse(localStorage.getItem('tournament_chips') || '[]');
@@ -529,7 +514,8 @@
         function updateRegistrationCard() {
             const allEntries = getClients().filter(c => !c.isTableBreak);
             const uniquePlayers = new Set(allEntries.map(c => c.rut));
-            document.getElementById('totalPlayersDisplay').textContent = uniquePlayers.size;
+            const displayEl = document.getElementById('totalPlayersDisplay');
+            if(displayEl) displayEl.textContent = uniquePlayers.size;
         }
         
         function updateSummaryCard() {
@@ -537,16 +523,7 @@
             const allEntries = getClients().filter(c => !c.isTableBreak);
             const uniquePlayers = new Set(allEntries.map(c => c.rut));
             const summaryCard = document.getElementById('summary-card');
-            summaryCard.innerHTML = `
-                <h2 class="text-lg font-bold text-gray-600">RESUMEN DEL TORNEO</h2>
-                <div class="my-2 py-2 border-y-2 border-gray-100 dark:border-gray-700">
-                    <h3 class="text-sm text-gray-500 dark:text-gray-400">POZO A REPARTIR</h3>
-                    <p class="text-3xl font-extrabold text-blue-800 dark:text-blue-400">$${formatNumber(prizePool)}</p>
-                </div>
-                <div>
-                    <h3 class="text-sm text-gray-500 dark:text-gray-400">TOTAL INSCRITOS</h3>
-                    <p class="text-3xl font-extrabold text-blue-800 dark:text-blue-400">${uniquePlayers.size}</p>
-                </div>`;
+            summaryCard.innerHTML = `<h2 class="text-lg font-bold text-gray-600">RESUMEN DEL TORNEO</h2><div class="my-2 py-2 border-y-2 border-gray-100 dark:border-gray-700"><h3 class="text-sm text-gray-500 dark:text-gray-400">POZO A REPARTIR</h3><p class="text-2xl md:text-3xl font-extrabold text-blue-800 dark:text-blue-400">$${formatNumber(prizePool)}</p></div><div><h3 class="text-sm text-gray-500 dark:text-gray-400">TOTAL INSCRITOS</h3><p class="text-2xl md:text-3xl font-extrabold text-blue-800 dark:text-blue-400">${uniquePlayers.size}</p></div>`;
         }
 
         function updateCountdownDisplay() {
@@ -570,22 +547,19 @@
             const endTimeDisplay = document.getElementById('endTimeDisplay');
             const warningMessage = document.getElementById('warningMessage');
             const endTimeString = localStorage.getItem('registrationEndTime');
-
             if (!endTimeString) {
                 registrationCard.classList.remove('hidden');
                 summaryCard.classList.add('hidden');
-                endTimeDisplay.textContent = 'Cierre no definido';
-                warningMessage.classList.add('hidden');
+                if(endTimeDisplay) endTimeDisplay.textContent = 'Cierre no definido';
+                if(warningMessage) warningMessage.classList.add('hidden');
                 if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
                 updateTopCardsLayout();
                 return;
             }
-            
             const [hours, minutes] = endTimeString.split(':');
             const now = new Date();
             const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
             const minutesRemaining = (endTime.getTime() - now.getTime()) / 60000;
-
             if (minutesRemaining <= 0) {
                 registrationCard.classList.add('hidden');
                 summaryCard.classList.remove('hidden');
@@ -594,16 +568,18 @@
             } else {
                 registrationCard.classList.remove('hidden');
                 summaryCard.classList.add('hidden');
-                endTimeDisplay.textContent = `Cierre a las ${endTimeString} hrs.`;
-                if (minutesRemaining <= 20) {
-                    warningMessage.classList.remove('hidden');
-                    if (!countdownInterval) {
-                        updateCountdownDisplay();
-                        countdownInterval = setInterval(updateCountdownDisplay, 1000);
+                if(endTimeDisplay) endTimeDisplay.textContent = `Cierre a las ${endTimeString} hrs.`;
+                if(warningMessage) {
+                    if (minutesRemaining <= 20) {
+                        warningMessage.classList.remove('hidden');
+                        if (!countdownInterval) {
+                            updateCountdownDisplay();
+                            countdownInterval = setInterval(updateCountdownDisplay, 1000);
+                        }
+                    } else {
+                        warningMessage.classList.add('hidden');
+                        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
                     }
-                } else {
-                    warningMessage.classList.add('hidden');
-                    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
                 }
             }
             updateTopCardsLayout();
@@ -614,7 +590,8 @@
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
-            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+            const clockEl = document.getElementById('clock');
+            if(clockEl) clockEl.textContent = `${hours}:${minutes}:${seconds}`;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
