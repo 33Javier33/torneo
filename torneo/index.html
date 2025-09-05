@@ -33,14 +33,10 @@
         }
         .card {
             background-color: white;
-            padding: 1rem;
+            padding: 0.75rem;
             border-radius: 1rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease-in-out;
-        }
-        .title-section {
-            margin-bottom: 1.5rem;
-            text-align: center;
         }
         .table-container {
             overflow-x: auto;
@@ -117,10 +113,6 @@
         .dark td.rank { color: #94a3b8; }
 
         #top-left-info {
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 100;
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
             background-color: rgba(255, 255, 255, 0.8);
@@ -212,24 +204,30 @@
 </head>
 <body>
 
-    <div id="top-left-info">
-        <div id="tournamentDate"></div>
-        <div id="clock" class="clock">00:00:00</div>
-    </div>
-    
-    <a href="../" class="fixed top-4 right-4 z-10 block transition-transform duration-200 hover:scale-105">
-        <img src="img/dreams1.png" 
-             alt="Logo del Casino y enlace a Planilla" 
-             class="w-32 h-auto rounded-lg shadow-lg"
-             onerror="this.onerror=null;this.src='https://placehold.co/120x90/1e293b/f1f5f9?text=LOGO';">
-    </a>
-
-    <div id="classificationView" class="w-full relative z-20">
-        <div class="container">
-            <div class="title-section">
-                <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-2">Cargando...</h1>
-            </div>
+    <!-- CAMBIO: Nueva estructura para el encabezado -->
+    <header class="container flex justify-between items-center mb-6">
+        <!-- Columna Izquierda: Fecha y Hora -->
+        <div id="top-left-info" class="flex-shrink-0">
+            <div id="tournamentDate"></div>
+            <div id="clock" class="clock">00:00:00</div>
         </div>
+        
+        <!-- Columna Central: Título -->
+        <div class="flex-grow text-center">
+            <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900">Cargando...</h1>
+        </div>
+        
+        <!-- Columna Derecha: Logo -->
+        <a href="../" class="flex-shrink-0 block transition-transform duration-200 hover:scale-105">
+            <img src="img/dreams1.png" 
+                 alt="Logo del Casino y enlace a Planilla" 
+                 class="w-32 h-auto rounded-lg shadow-lg"
+                 onerror="this.onerror=null;this.src='https://placehold.co/120x90/1e293b/f1f5f9?text=LOGO';">
+        </a>
+    </header>
+
+    <div id="classificationView" class="w-full">
+        <!-- El div del título se movió al nuevo header -->
 
         <div id="top-cards-grid" class="grid gap-4 mb-6 transition-all duration-500 ease-in-out w-full px-6 box-border">
             <div id="prize-card-container" class="card text-center">
@@ -244,11 +242,11 @@
 
             <div id="registration-card" class="card text-center">
                 <h2 class="text-lg font-bold text-gray-600">INSCRIPCIONES</h2>
-                <p id="totalPlayersDisplay" class="text-3xl font-extrabold text-blue-800 dark:text-blue-400">0</p>
+                <p id="totalPlayersDisplay" class="text-2xl md:text-3xl font-extrabold text-blue-800 dark:text-blue-400">0</p>
                 <p class="text-sm text-gray-500 dark:text-gray-400 -mt-1">jugadores únicos</p>
-                <p id="endTimeDisplay" class="font-bold text-lg mt-2"></p>
+                <p id="endTimeDisplay" class="font-bold text-base md:text-lg mt-2"></p>
                 <div id="warningMessage" class="hidden">
-                    <p id="countdownTimer" class="font-bold text-red-600 animate-pulse text-2xl font-mono"></p>
+                    <p id="countdownTimer" class="font-bold text-red-600 animate-pulse text-xl md:text-2xl font-mono"></p>
                 </div>
             </div>
             
@@ -266,7 +264,6 @@
     <footer class="container mt-auto pt-8 text-center text-gray-500 text-sm"><p>CarlosPN Interactive®</p></footer>
 
     <script>
-        // --- CAMBIO: Se ajusta el número de finalistas por tipo de torneo ---
         const TOURNAMENTS = {
             ruleta: { name: 'Torneo de Ruleta', type: 'roulette', finalistsCount: 5 },
             draw_poker: { name: 'Torneo de Draw Poker', rounds: ['Puntaje'], type: 'cards', finalistsCount: 6 },
@@ -290,7 +287,6 @@
             const tournamentType = getTournamentType();
             const tournament = TOURNAMENTS[tournamentType];
             if (!tournament) return;
-
             document.getElementById('tournamentTitle').textContent = tournament.name;
             document.getElementById('tournamentDate').textContent = getTournamentDate();
         }
@@ -349,7 +345,7 @@
             const currentView = views[prizeViewIndex];
             contentEl.classList.add('prize-exiting');
             setTimeout(() => {
-                contentEl.innerHTML = `<h2 class="text-lg font-bold text-gray-600 dark:text-gray-400">${currentView.title}</h2><p class="text-2xl md:text-4xl font-extrabold mt-1 ${currentView.color}">${currentView.value}</p>`;
+                contentEl.innerHTML = `<h2 class="text-base md:text-lg font-bold text-gray-600 dark:text-gray-400">${currentView.title}</h2><p class="text-2xl md:text-3xl font-extrabold mt-1 ${currentView.color}">${currentView.value}</p>`;
                 contentEl.classList.remove('prize-exiting');
             }, 300);
             prizeViewIndex = (prizeViewIndex + 1) % views.length;
@@ -411,27 +407,22 @@
             const allEntries = getClients().filter(c => !c.isTableBreak);
             const tournament = TOURNAMENTS[tournamentType];
             if (!tournament) return;
-            
             const finalistsCount = tournament.finalistsCount || 6;
             const rounds = getTournamentRounds(tournamentType);
-            
             const tableHeader = document.getElementById('tableHeader');
             let headerHTML = '<tr><th class="w-12">#</th><th>Jugador</th>';
             rounds.forEach(round => { headerHTML += `<th class="text-right">${round}</th>`; });
             headerHTML += '<th class="text-right">Total</th></tr>';
             tableHeader.innerHTML = headerHTML;
-            
             const bestEntries = getBestEntryPerPlayer(allEntries, tournamentType);
             const playersWithScores = bestEntries.map(client => ({ ...client, totalScore: calculateTotal(client, tournamentType) }));
             playersWithScores.sort((a, b) => b.totalScore - a.totalScore);
-            
             const tableBody = document.getElementById('tableBody');
             if (playersWithScores.length === 0) {
                 const colSpan = (rounds ? rounds.length : 0) + 3;
                 tableBody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center italic py-8">Aún no hay jugadores registrados.</td></tr>`;
                 return;
             }
-            
             let bodyHTML = '';
             playersWithScores.forEach((player, index) => {
                 const rowClass = index < finalistsCount ? 'finalist-row' : '';
@@ -545,7 +536,7 @@
             const allEntries = getClients().filter(c => !c.isTableBreak);
             const uniquePlayers = new Set(allEntries.map(c => c.rut));
             const summaryCard = document.getElementById('summary-card');
-            summaryCard.innerHTML = `<h2 class="text-lg font-bold text-gray-600">RESUMEN DEL TORNEO</h2><div class="my-2 py-2 border-y-2 border-gray-100 dark:border-gray-700"><h3 class="text-sm text-gray-500 dark:text-gray-400">POZO A REPARTIR</h3><p class="text-2xl md:text-3xl font-extrabold text-blue-800 dark:text-blue-400">$${formatNumber(prizePool)}</p></div><div><h3 class="text-sm text-gray-500 dark:text-gray-400">TOTAL INSCRITOS</h3><p class="text-2xl md:text-3xl font-extrabold text-blue-800 dark:text-blue-400">${uniquePlayers.size}</p></div>`;
+            summaryCard.innerHTML = `<h2 class="text-base md:text-lg font-bold text-gray-600">RESUMEN</h2><div class="my-1 py-1 border-y-2 border-gray-100 dark:border-gray-700"><h3 class="text-xs text-gray-500 dark:text-gray-400">POZO</h3><p class="text-xl md:text-2xl font-extrabold text-blue-800 dark:text-blue-400">$${formatNumber(prizePool)}</p></div><div><h3 class="text-xs text-gray-500 dark:text-gray-400">INSCRITOS</h3><p class="text-xl md:text-2xl font-extrabold text-blue-800 dark:text-blue-400">${uniquePlayers.size}</p></div>`;
         }
 
         function updateCountdownDisplay() {
