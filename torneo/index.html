@@ -103,22 +103,31 @@
         .dark td.total-score { color: #60a5fa; }
         .dark td.rank { color: #94a3b8; }
 
-        .clock {
+        #top-left-info {
             position: fixed;
             top: 1rem;
             left: 1rem;
             z-index: 100;
-            font-family: 'monospace';
-            font-size: 1.5rem;
-            font-weight: 700;
-            padding: 0.25rem 0.75rem;
+            padding: 0.5rem 1rem;
             border-radius: 0.5rem;
             background-color: rgba(255, 255, 255, 0.8);
             color: #1e293b;
             backdrop-filter: blur(5px);
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
         }
-        .dark .clock {
+        #tournamentDate {
+             font-size: 1.25rem;
+             font-weight: 700;
+             line-height: 1.2;
+        }
+        .clock {
+            font-family: 'monospace';
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .dark #top-left-info {
             background-color: rgba(30, 41, 59, 0.8);
             color: #e2e8f0;
         }
@@ -156,9 +165,10 @@
             flex-wrap: wrap;
             padding-top: 8px;
         }
+        /* CAMBIO: Círculo de la ficha más grande */
         .chip {
-            width: 50px;
-            height: 50px;
+            width: 72px; /* Aumentado desde 60px */
+            height: 72px; /* Aumentado desde 60px */
             border-radius: 50%;
             display: flex;
             justify-content: center;
@@ -175,31 +185,33 @@
 </head>
 <body>
 
-    <div id="clock" class="clock">00:00:00</div>
+    <div id="top-left-info">
+        <div id="tournamentDate"></div>
+        <div id="clock" class="clock">00:00:00</div>
+    </div>
     
-    <!-- CAMBIO: Se ajustó el z-index a z-10 (capa inferior) -->
-    <a href="../" class="fixed top-4 right-4 z-10 block transition-transform duration-200 hover:scale-105">
+    <a href="img/dreams.png" class="fixed top-4 right-4 z-10 block transition-transform duration-200 hover:scale-105">
         <img src="img/dreams1.png" 
              alt="Logo del Casino y enlace a Planilla" 
              class="w-32 h-auto rounded-lg shadow-lg"
              onerror="this.onerror=null;this.src='https://placehold.co/120x90/1e293b/f1f5f9?text=LOGO';">
     </a>
 
-    <!-- Vistas -->
-    <!-- CAMBIO: Se añadió 'relative z-20' para poner el contenido en una capa superior -->
     <div id="classificationView" class="container relative z-20">
         <div class="title-section">
             <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-2">Cargando...</h1>
-            <p id="tournamentDate" class="text-xl font-bold text-gray-600"></p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div id="prize-card-container" class="card text-center">
                 <div id="prize-card-content"></div>
             </div>
+
             <div id="chip-card" class="card text-center hidden">
-                 <h2 class="text-lg font-bold text-gray-600">FICHAS EN JUEGO</h2>
+                 <h2 class="text-lg font-bold text-gray-600">FICHAS Y LÍMITES</h2>
+                 <div id="chip-card-limits-content" class="my-2 py-2 border-y-2 border-gray-100 dark:border-gray-700"></div>
                  <div id="chip-rack" class="chip-rack"></div>
             </div>
+
             <div id="registration-card" class="card text-center">
                 <h2 class="text-lg font-bold text-gray-600">INSCRIPCIONES</h2>
                 <p id="totalPlayersDisplay" class="text-3xl font-extrabold text-blue-800 dark:text-blue-400">0</p>
@@ -207,15 +219,14 @@
                 <div id="newRegistrationToast" class="hidden mt-2 p-2 bg-green-100 text-green-800 text-sm rounded-lg font-bold"></div>
                 <p id="endTimeDisplay" class="font-bold text-lg mt-2"></p>
                 <div id="warningMessage" class="hidden">
-                    <p class="font-bold text-red-600 animate-pulse">¡CIERRE EN MENOS DE 20 MINUTOS!</p>
+                    <p id="countdownTimer" class="font-bold text-red-600 animate-pulse text-2xl font-mono"></p>
                 </div>
             </div>
         </div>
         <div class="card"><div class="table-container"><table><thead id="tableHeader"></thead><tbody id="tableBody"></tbody></table></div></div>
     </div>
-    <!-- CAMBIO: Se añadió 'relative z-20' para poner el contenido en una capa superior -->
+
     <div id="finalView" class="container relative z-20" style="display: none;"><div class="title-section"><h1 class="text-4xl md:text-5xl font-extrabold text-red-700 dark:text-red-500 mb-2">Mesa Final</h1><p class="text-xl font-bold text-gray-600">¡Los mejores puntajes compiten ahora!</p></div><div class="card"><div class="table-container"><table><thead id="finalTableHeader"></thead><tbody id="finalTableBody"></tbody></table></div></div></div>
-    <!-- CAMBIO: Se añadió 'relative z-20' para poner el contenido en una capa superior -->
     <div id="winnersView" class="container relative z-20" style="display: none;"><div class="title-section"><h1 class="text-4xl md:text-5xl font-extrabold text-amber-500 dark:text-amber-400 mb-2">🏆 GANADORES DEL TORNEO 🏆</h1></div><div id="winnersPodium" class="winner-podium"></div></div>
 
     <footer class="mt-auto pt-8 text-center text-gray-500 text-sm"><p>CarlosPN Interactive®</p></footer>
@@ -232,12 +243,21 @@
 
         let prizeViewIndex = 0;
         let prizeInterval;
-        let processedNotifications = new Set();
+        let countdownInterval = null; // Variable para controlar el intervalo de la cuenta regresiva
         
         function goFullscreen() {
             const elem = document.documentElement;
             if (elem.requestFullscreen) { elem.requestFullscreen(); } 
             else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
+        }
+
+        function updateHeaderInfo() {
+            const tournamentType = getTournamentType();
+            const tournament = TOURNAMENTS[tournamentType];
+            if (!tournament) return;
+
+            document.getElementById('tournamentTitle').textContent = tournament.name;
+            document.getElementById('tournamentDate').textContent = getTournamentDate();
         }
 
         function updateActiveView() {
@@ -246,9 +266,12 @@
             document.getElementById('classificationView').style.display = 'none';
             document.getElementById('finalView').style.display = 'none';
             document.getElementById('winnersView').style.display = 'none';
-
-            renderChipRack();
+            
+            updateHeaderInfo();
+            renderChipRack(); 
+            renderLimitsInChipCard(); 
             updateRegistrationCard();
+            checkRegistrationStatus();
 
             switch (viewState) {
                 case 'final': document.getElementById('finalView').style.display = 'block'; renderFinalTable(); break;
@@ -343,9 +366,6 @@
             const tournament = TOURNAMENTS[tournamentType];
             const rounds = getTournamentRounds(tournamentType);
             if (!tournament) return;
-
-            document.getElementById('tournamentTitle').textContent = tournament.name;
-            document.getElementById('tournamentDate').textContent = getTournamentDate();
 
             const tableHeader = document.getElementById('tableHeader');
             let headerHTML = '<tr><th class="w-12">#</th><th>Jugador</th>';
@@ -454,6 +474,44 @@
                 }
             }
         }
+        
+        function renderLimitsInChipCard() {
+            const tournamentType = getTournamentType();
+            const tournament = TOURNAMENTS[tournamentType];
+            const limits = JSON.parse(localStorage.getItem('gameLimits') || '{}');
+            const limitsContent = document.getElementById('chip-card-limits-content');
+            
+            if (!limitsContent || !tournament) return;
+
+            let min, max, hasValues = false;
+
+            if (tournament.type === 'cards') {
+                min = limits.minBet;
+                max = limits.maxBet;
+            } 
+            else if (tournament.type === 'roulette') {
+                min = limits.minPleno;
+                max = limits.maxPleno;
+            }
+
+            if (min || max) {
+                hasValues = true;
+                limitsContent.innerHTML = `
+                    <div class="flex justify-around items-center w-full">
+                        <div class="px-2">
+                            <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÍNIMO</h3>
+                            <p class="text-xl font-extrabold text-green-600 dark:text-green-400">$${formatNumber(min)}</p>
+                        </div>
+                        <div class="px-2">
+                            <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÁXIMO</h3>
+                            <p class="text-xl font-extrabold text-red-600 dark:text-red-400">$${formatNumber(max)}</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                 limitsContent.innerHTML = '';
+            }
+        }
 
         function renderChipRack() {
             const tournamentType = getTournamentType();
@@ -471,7 +529,7 @@
             const chips = JSON.parse(localStorage.getItem('tournament_chips') || '[]');
             
             if (chips.length === 0) {
-                rack.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400">No hay fichas definidas.</p>`;
+                rack.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">No hay fichas definidas.</p>`;
                 return;
             }
 
@@ -479,16 +537,13 @@
                 const chipEl = document.createElement('div');
                 chipEl.className = 'chip';
                 chipEl.style.backgroundColor = chip.color;
-                
                 const formattedValue = formatNumber(chip.value);
                 chipEl.textContent = formattedValue;
-
                 const len = formattedValue.length;
                 if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
                 else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
                 else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
                 else { chipEl.style.fontSize = '0.5rem'; }
-
                 rack.appendChild(chipEl);
             });
         }
@@ -497,45 +552,38 @@
             const allEntries = getClients().filter(c => !c.isTableBreak);
             const uniquePlayers = new Set(allEntries.map(c => c.rut));
             document.getElementById('totalPlayersDisplay').textContent = uniquePlayers.size;
+        }
+
+        // --- CAMBIO: Lógica de la Cuenta Regresiva ---
+        function updateCountdownDisplay() {
+            const endTimeString = localStorage.getItem('registrationEndTime');
+            if (!endTimeString) return;
+
+            const [hours, minutes] = endTimeString.split(':');
+            const now = new Date();
+            const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
             
-            const now = Date.now();
-            const twoMinutesAgo = now - 120000;
-            let allRegistrations = JSON.parse(localStorage.getItem('new_registrations') || '[]');
-            
-            const newNotifications = allRegistrations.filter(reg => 
-                reg.timestamp > twoMinutesAgo && !processedNotifications.has(reg.id)
-            );
+            const totalSeconds = Math.floor((endTime.getTime() - now.getTime()) / 1000);
 
-            if (newNotifications.length > 0) {
-                const notificationArea = document.getElementById('newRegistrationToast');
-                let message = newNotifications.length === 1 
-                    ? '¡Se inscribió 1 jugador nuevo!' 
-                    : `¡Se inscribieron ${newNotifications.length} jugadores nuevos!`;
-                
-                notificationArea.textContent = message;
-                notificationArea.classList.remove('hidden');
-
-                newNotifications.forEach(reg => processedNotifications.add(reg.id));
-
-                setTimeout(() => {
-                    notificationArea.classList.add('hidden');
-                }, 20000);
-            }
-
-            const stillValidRegistrations = allRegistrations.filter(reg => reg.timestamp >= twoMinutesAgo);
-            if(stillValidRegistrations.length !== allRegistrations.length) {
-                localStorage.setItem('new_registrations', JSON.stringify(stillValidRegistrations));
+            if (totalSeconds >= 0) {
+                const mins = Math.floor(totalSeconds / 60);
+                const secs = totalSeconds % 60;
+                const timerEl = document.getElementById('countdownTimer');
+                if(timerEl) timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
             }
         }
 
         function checkRegistrationStatus() {
-            const endTimeString = localStorage.getItem('registrationEndTime');
+            const registrationCard = document.getElementById('registration-card');
             const endTimeDisplay = document.getElementById('endTimeDisplay');
             const warningMessage = document.getElementById('warningMessage');
+            const endTimeString = localStorage.getItem('registrationEndTime');
 
             if (!endTimeString) {
-                endTimeDisplay.textContent = 'No definida';
+                registrationCard.classList.remove('hidden');
+                endTimeDisplay.textContent = 'Cierre no definido';
                 warningMessage.classList.add('hidden');
+                if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
                 return;
             }
             
@@ -544,9 +592,26 @@
             const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
             const minutesRemaining = (endTime.getTime() - now.getTime()) / 60000;
 
-            endTimeDisplay.textContent = `Cierre a las ${endTimeString} hrs.`;
-            warningMessage.classList.toggle('hidden', !(minutesRemaining > 0 && minutesRemaining <= 20));
+            if (minutesRemaining <= 0) {
+                registrationCard.classList.add('hidden');
+                if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+            } else {
+                registrationCard.classList.remove('hidden');
+                endTimeDisplay.textContent = `Cierre a las ${endTimeString} hrs.`;
+                
+                if (minutesRemaining <= 20) {
+                    warningMessage.classList.remove('hidden');
+                    if (!countdownInterval) {
+                        updateCountdownDisplay(); // Llamada inicial para que no espere 1 segundo
+                        countdownInterval = setInterval(updateCountdownDisplay, 1000);
+                    }
+                } else {
+                    warningMessage.classList.add('hidden');
+                    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+                }
+            }
         }
+        // --- FIN DEL CAMBIO ---
 
         function updateClock() {
             const now = new Date();
@@ -563,13 +628,13 @@
             } catch (e) {}
 
             updateActiveView();
-            checkRegistrationStatus();
             updateClock();
             
             updatePrizeCard();
             prizeInterval = setInterval(updatePrizeCard, 4000);
             
             setInterval(updateClock, 1000);
+            setInterval(checkRegistrationStatus, 10000); // Revisa el estado general cada 10 segundos
             setInterval(updateRegistrationCard, 5000);
 
             window.addEventListener('storage', (event) => {
@@ -593,5 +658,4 @@
     </script>
 </body>
 </html>
-
 
