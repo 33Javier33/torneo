@@ -165,10 +165,9 @@
             flex-wrap: wrap;
             padding-top: 8px;
         }
-        /* CAMBIO: Círculo de la ficha más grande */
         .chip {
-            width: 72px; /* Aumentado desde 60px */
-            height: 72px; /* Aumentado desde 60px */
+            width: 72px;
+            height: 72px;
             border-radius: 50%;
             display: flex;
             justify-content: center;
@@ -201,7 +200,8 @@
         <div class="title-section">
             <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-2">Cargando...</h1>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <!-- CAMBIO: Se agregó un ID al contenedor del grid -->
+        <div id="top-cards-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div id="prize-card-container" class="card text-center">
                 <div id="prize-card-content"></div>
             </div>
@@ -243,7 +243,7 @@
 
         let prizeViewIndex = 0;
         let prizeInterval;
-        let countdownInterval = null; // Variable para controlar el intervalo de la cuenta regresiva
+        let countdownInterval = null;
         
         function goFullscreen() {
             const elem = document.documentElement;
@@ -483,8 +483,7 @@
             
             if (!limitsContent || !tournament) return;
 
-            let min, max, hasValues = false;
-
+            let min, max;
             if (tournament.type === 'cards') {
                 min = limits.minBet;
                 max = limits.maxBet;
@@ -495,14 +494,13 @@
             }
 
             if (min || max) {
-                hasValues = true;
                 limitsContent.innerHTML = `
                     <div class="flex justify-around items-center w-full">
-                        <div class="px-2">
+                        <div>
                             <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÍNIMO</h3>
                             <p class="text-xl font-extrabold text-green-600 dark:text-green-400">$${formatNumber(min)}</p>
                         </div>
-                        <div class="px-2">
+                        <div>
                             <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÁXIMO</h3>
                             <p class="text-xl font-extrabold text-red-600 dark:text-red-400">$${formatNumber(max)}</p>
                         </div>
@@ -554,7 +552,6 @@
             document.getElementById('totalPlayersDisplay').textContent = uniquePlayers.size;
         }
 
-        // --- CAMBIO: Lógica de la Cuenta Regresiva ---
         function updateCountdownDisplay() {
             const endTimeString = localStorage.getItem('registrationEndTime');
             if (!endTimeString) return;
@@ -573,10 +570,13 @@
             }
         }
 
+        // --- CAMBIO: Lógica de reorganización de tarjetas ---
         function checkRegistrationStatus() {
             const registrationCard = document.getElementById('registration-card');
             const endTimeDisplay = document.getElementById('endTimeDisplay');
             const warningMessage = document.getElementById('warningMessage');
+            const grid = document.getElementById('top-cards-grid');
+            const chipCard = document.getElementById('chip-card');
             const endTimeString = localStorage.getItem('registrationEndTime');
 
             if (!endTimeString) {
@@ -584,6 +584,8 @@
                 endTimeDisplay.textContent = 'Cierre no definido';
                 warningMessage.classList.add('hidden');
                 if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+                grid.classList.remove('md:grid-cols-1', 'md:grid-cols-2');
+                grid.classList.add('md:grid-cols-3');
                 return;
             }
             
@@ -595,14 +597,24 @@
             if (minutesRemaining <= 0) {
                 registrationCard.classList.add('hidden');
                 if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+                
+                grid.classList.remove('md:grid-cols-3', 'md:grid-cols-2', 'md:grid-cols-1');
+                if (chipCard.classList.contains('hidden')) {
+                    grid.classList.add('md:grid-cols-1');
+                } else {
+                    grid.classList.add('md:grid-cols-2');
+                }
             } else {
                 registrationCard.classList.remove('hidden');
                 endTimeDisplay.textContent = `Cierre a las ${endTimeString} hrs.`;
                 
+                grid.classList.remove('md:grid-cols-1', 'md:grid-cols-2');
+                grid.classList.add('md:grid-cols-3');
+                
                 if (minutesRemaining <= 20) {
                     warningMessage.classList.remove('hidden');
                     if (!countdownInterval) {
-                        updateCountdownDisplay(); // Llamada inicial para que no espere 1 segundo
+                        updateCountdownDisplay();
                         countdownInterval = setInterval(updateCountdownDisplay, 1000);
                     }
                 } else {
@@ -634,7 +646,7 @@
             prizeInterval = setInterval(updatePrizeCard, 4000);
             
             setInterval(updateClock, 1000);
-            setInterval(checkRegistrationStatus, 10000); // Revisa el estado general cada 10 segundos
+            setInterval(checkRegistrationStatus, 10000);
             setInterval(updateRegistrationCard, 5000);
 
             window.addEventListener('storage', (event) => {
@@ -658,4 +670,5 @@
     </script>
 </body>
 </html>
+
 
