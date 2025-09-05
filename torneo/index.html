@@ -23,7 +23,6 @@
                 url('img/dreams1.png');
             background-attachment: fixed;
         }
-        /* --- CAMBIO: Se añade margin auto para asegurar el centrado --- */
         .container {
             width: 100%;
             max-width: 1600px;
@@ -194,6 +193,21 @@
             outline: 2px solid #ccc;
             line-height: 1;
         }
+        .finalist-row {
+            background-color: #dcfce7 !important;
+            font-weight: 700;
+            border-left: 4px solid #22c55e;
+        }
+        .finalist-row:hover {
+            background-color: #bbf7d0 !important;
+        }
+        .dark .finalist-row {
+            background-color: #14532d !important;
+            border-left-color: #4ade80;
+        }
+        .dark .finalist-row:hover {
+            background-color: #166534 !important;
+        }
     </style>
 </head>
 <body>
@@ -252,13 +266,14 @@
     <footer class="container mt-auto pt-8 text-center text-gray-500 text-sm"><p>CarlosPN Interactive®</p></footer>
 
     <script>
+        // --- CAMBIO: Se ajusta el número de finalistas por tipo de torneo ---
         const TOURNAMENTS = {
-            ruleta: { name: 'Torneo de Ruleta', type: 'roulette' },
-            draw_poker: { name: 'Torneo de Draw Poker', rounds: ['Puntaje'], type: 'cards' },
-            blackjack: { name: 'Torneo de Blackjack', rounds: ['Puntaje'], type: 'cards' },
-            ruleta_vip: { name: 'Torneo de Ruleta VIP', type: 'roulette' },
-            draw_poker_vip: { name: 'Torneo de Draw Poker VIP', rounds: ['Puntaje'], type: 'cards' },
-            blackjack_vip: { name: 'Torneo de Blackjack VIP', rounds: ['Puntaje'], type: 'cards' }
+            ruleta: { name: 'Torneo de Ruleta', type: 'roulette', finalistsCount: 5 },
+            draw_poker: { name: 'Torneo de Draw Poker', rounds: ['Puntaje'], type: 'cards', finalistsCount: 6 },
+            blackjack: { name: 'Torneo de Blackjack', rounds: ['Puntaje'], type: 'cards', finalistsCount: 6 },
+            ruleta_vip: { name: 'Torneo de Ruleta VIP', type: 'roulette', finalistsCount: 5 },
+            draw_poker_vip: { name: 'Torneo de Draw Poker VIP', rounds: ['Puntaje'], type: 'cards', finalistsCount: 6 },
+            blackjack_vip: { name: 'Torneo de Blackjack VIP', rounds: ['Puntaje'], type: 'cards', finalistsCount: 6 }
         };
 
         let prizeViewIndex = 0;
@@ -395,25 +410,32 @@
             const tournamentType = getTournamentType();
             const allEntries = getClients().filter(c => !c.isTableBreak);
             const tournament = TOURNAMENTS[tournamentType];
-            const rounds = getTournamentRounds(tournamentType);
             if (!tournament) return;
+            
+            const finalistsCount = tournament.finalistsCount || 6;
+            const rounds = getTournamentRounds(tournamentType);
+            
             const tableHeader = document.getElementById('tableHeader');
             let headerHTML = '<tr><th class="w-12">#</th><th>Jugador</th>';
             rounds.forEach(round => { headerHTML += `<th class="text-right">${round}</th>`; });
             headerHTML += '<th class="text-right">Total</th></tr>';
             tableHeader.innerHTML = headerHTML;
+            
             const bestEntries = getBestEntryPerPlayer(allEntries, tournamentType);
             const playersWithScores = bestEntries.map(client => ({ ...client, totalScore: calculateTotal(client, tournamentType) }));
             playersWithScores.sort((a, b) => b.totalScore - a.totalScore);
+            
             const tableBody = document.getElementById('tableBody');
             if (playersWithScores.length === 0) {
                 const colSpan = (rounds ? rounds.length : 0) + 3;
                 tableBody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center italic py-8">Aún no hay jugadores registrados.</td></tr>`;
                 return;
             }
+            
             let bodyHTML = '';
             playersWithScores.forEach((player, index) => {
-                bodyHTML += `<tr><td class="rank">${index + 1}</td><td class="font-bold">${formatPlayerName(player.nombre, player.apellido)}</td>`;
+                const rowClass = index < finalistsCount ? 'finalist-row' : '';
+                bodyHTML += `<tr class="${rowClass}"><td class="rank">${index + 1}</td><td class="font-bold">${formatPlayerName(player.nombre, player.apellido)}</td>`;
                 rounds.forEach(round => {
                     const scoreKey = round.toLowerCase().replace(/ /g, '');
                     bodyHTML += `<td class="score">${formatNumber(player[scoreKey] || 0)}</td>`;
