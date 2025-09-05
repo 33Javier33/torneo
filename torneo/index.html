@@ -29,6 +29,7 @@
             padding: 1rem;
             border-radius: 1rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease-in-out;
         }
         .title-section {
             margin-bottom: 1.5rem;
@@ -189,7 +190,7 @@
         <div id="clock" class="clock">00:00:00</div>
     </div>
     
-    <a href="https://torneo-flax.vercel.app" class="fixed top-4 right-4 z-10 block transition-transform duration-200 hover:scale-105">
+    <a href="../" class="fixed top-4 right-4 z-10 block transition-transform duration-200 hover:scale-105">
         <img src="img/dreams1.png" 
              alt="Logo del Casino y enlace a Planilla" 
              class="w-32 h-auto rounded-lg shadow-lg"
@@ -200,8 +201,7 @@
         <div class="title-section">
             <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900 mb-2">Cargando...</h1>
         </div>
-        <!-- CAMBIO: Se agregó un ID al contenedor del grid -->
-        <div id="top-cards-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div id="top-cards-grid" class="grid grid-cols-1 gap-4 mb-6 transition-all duration-500 ease-in-out">
             <div id="prize-card-container" class="card text-center">
                 <div id="prize-card-content"></div>
             </div>
@@ -216,12 +216,13 @@
                 <h2 class="text-lg font-bold text-gray-600">INSCRIPCIONES</h2>
                 <p id="totalPlayersDisplay" class="text-3xl font-extrabold text-blue-800 dark:text-blue-400">0</p>
                 <p class="text-sm text-gray-500 dark:text-gray-400 -mt-1">jugadores únicos</p>
-                <div id="newRegistrationToast" class="hidden mt-2 p-2 bg-green-100 text-green-800 text-sm rounded-lg font-bold"></div>
                 <p id="endTimeDisplay" class="font-bold text-lg mt-2"></p>
                 <div id="warningMessage" class="hidden">
                     <p id="countdownTimer" class="font-bold text-red-600 animate-pulse text-2xl font-mono"></p>
                 </div>
             </div>
+            
+            <div id="summary-card" class="card text-center hidden"></div>
         </div>
         <div class="card"><div class="table-container"><table><thead id="tableHeader"></thead><tbody id="tableBody"></tbody></table></div></div>
     </div>
@@ -268,10 +269,11 @@
             document.getElementById('winnersView').style.display = 'none';
             
             updateHeaderInfo();
-            renderChipRack(); 
-            renderLimitsInChipCard(); 
+            renderChipRack();
+            renderLimitsInChipCard(); // <-- Asegurarse que se llame
             updateRegistrationCard();
             checkRegistrationStatus();
+            updateTopCardsLayout();
 
             switch (viewState) {
                 case 'final': document.getElementById('finalView').style.display = 'block'; renderFinalTable(); break;
@@ -279,20 +281,35 @@
                 default: document.getElementById('classificationView').style.display = 'block'; renderTournamentTable(); break;
             }
         }
-
+        
+        function updateTopCardsLayout() {
+            const grid = document.getElementById('top-cards-grid');
+            if (!grid) return;
+            const cards = [
+                document.getElementById('prize-card-container'),
+                document.getElementById('chip-card'),
+                document.getElementById('registration-card'),
+                document.getElementById('summary-card')
+            ];
+            const visibleCards = cards.filter(card => card && !card.classList.contains('hidden'));
+            const visibleCount = visibleCards.length;
+            grid.classList.remove('md:grid-cols-1', 'md:grid-cols-2', 'md:grid-cols-3');
+            if (visibleCount > 0) {
+                grid.classList.add(`md:grid-cols-${visibleCount}`);
+            }
+        }
+        
         function updatePrizeCard() {
             const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
             const prizePool = parseInt(localStorage.getItem('prizePool') || '0');
             const contentEl = document.getElementById('prize-card-content');
             if (!contentEl) return;
-
             const views = [
                 { title: 'POZO TOTAL', value: `$${formatNumber(prizePool)}`, color: 'text-blue-600 dark:text-blue-400' },
                 { title: '🥉 3er Puesto', value: `$${formatNumber(prizes.third || 0)}`, color: 'text-amber-600 dark:text-amber-500' },
                 { title: '🥈 2do Puesto', value: `$${formatNumber(prizes.second || 0)}`, color: 'text-slate-500 dark:text-slate-400' },
                 { title: '🥇 1er Puesto', value: `$${formatNumber(prizes.first || 0)}`, color: 'text-amber-400 dark:text-amber-300' }
             ];
-            
             const currentView = views[prizeViewIndex];
             contentEl.classList.add('prize-exiting');
             setTimeout(() => {
@@ -307,13 +324,9 @@
             const nombreParts = nombre.trim().split(' ').filter(n => n); 
             const apellidoParts = apellido.trim().split(' ').filter(a => a);
             let formattedNombre = nombreParts[0] || '';
-            if (nombreParts.length > 1) {
-                formattedNombre += ` ${nombreParts[1].charAt(0)}.`;
-            }
+            if (nombreParts.length > 1) { formattedNombre += ` ${nombreParts[1].charAt(0)}.`; }
             let formattedApellido = apellidoParts[0] || '';
-            if (apellidoParts.length > 1) {
-                formattedApellido += ` ${apellidoParts[1].charAt(0)}.`;
-            }
+            if (apellidoParts.length > 1) { formattedApellido += ` ${apellidoParts[1].charAt(0)}.`; }
             return `${formattedNombre} ${formattedApellido}`.trim();
         }
 
@@ -328,10 +341,7 @@
 
         function getTournamentType() { return localStorage.getItem('selectedTournament') || 'ruleta'; }
         function getClients() { return JSON.parse(localStorage.getItem(`clientes_${getTournamentType()}`) || '[]'); }
-        
-        function formatNumber(num) {
-            return Number(num || 0).toLocaleString('es-CL');
-        }
+        function formatNumber(num) { return Number(num || 0).toLocaleString('es-CL'); }
 
         function getTournamentDate() {
             const dateStr = localStorage.getItem('tournamentDate');
@@ -366,42 +376,28 @@
             const tournament = TOURNAMENTS[tournamentType];
             const rounds = getTournamentRounds(tournamentType);
             if (!tournament) return;
-
             const tableHeader = document.getElementById('tableHeader');
             let headerHTML = '<tr><th class="w-12">#</th><th>Jugador</th>';
-            rounds.forEach(round => {
-                headerHTML += `<th class="text-right">${round}</th>`;
-            });
+            rounds.forEach(round => { headerHTML += `<th class="text-right">${round}</th>`; });
             headerHTML += '<th class="text-right">Total</th></tr>';
             tableHeader.innerHTML = headerHTML;
-
             const bestEntries = getBestEntryPerPlayer(allEntries, tournamentType);
-
-            const playersWithScores = bestEntries.map(client => ({
-                ...client,
-                totalScore: calculateTotal(client, tournamentType)
-            }));
+            const playersWithScores = bestEntries.map(client => ({ ...client, totalScore: calculateTotal(client, tournamentType) }));
             playersWithScores.sort((a, b) => b.totalScore - a.totalScore);
-
             const tableBody = document.getElementById('tableBody');
             if (playersWithScores.length === 0) {
                 const colSpan = (rounds ? rounds.length : 0) + 3;
                 tableBody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center italic py-8">Aún no hay jugadores registrados.</td></tr>`;
                 return;
             }
-
             let bodyHTML = '';
             playersWithScores.forEach((player, index) => {
-                bodyHTML += '<tr>';
-                bodyHTML += `<td class="rank">${index + 1}</td>`;
-                bodyHTML += `<td class="font-bold">${formatPlayerName(player.nombre, player.apellido)}</td>`;
+                bodyHTML += `<tr><td class="rank">${index + 1}</td><td class="font-bold">${formatPlayerName(player.nombre, player.apellido)}</td>`;
                 rounds.forEach(round => {
                     const scoreKey = round.toLowerCase().replace(/ /g, '');
-                    const score = player[scoreKey] || 0;
-                    bodyHTML += `<td class="score">${formatNumber(score)}</td>`;
+                    bodyHTML += `<td class="score">${formatNumber(player[scoreKey] || 0)}</td>`;
                 });
-                bodyHTML += `<td class="score total-score">${formatNumber(player.totalScore)}</td>`;
-                bodyHTML += '</tr>';
+                bodyHTML += `<td class="score total-score">${formatNumber(player.totalScore)}</td></tr>`;
             });
             tableBody.innerHTML = bodyHTML;
         }
@@ -410,35 +406,25 @@
             const tournamentType = getTournamentType();
             const finalists = JSON.parse(localStorage.getItem(`finalistas_${tournamentType}`) || '[]');
             const rounds = getTournamentRounds(tournamentType);
-
             const tableHeader = document.getElementById('finalTableHeader');
             let headerHTML = '<tr><th class="w-16">Lugar</th><th>Finalista</th>';
-            rounds.forEach(round => {
-                headerHTML += `<th class="text-right">${round}</th>`;
-            });
+            rounds.forEach(round => { headerHTML += `<th class="text-right">${round}</th>`; });
             headerHTML += '<th class="text-right">Total Final</th></tr>';
             tableHeader.innerHTML = headerHTML;
-
             const finalistsWithScores = finalists.map(f => ({ ...f, totalScore: calculateTotal(f, tournamentType) }));
             finalistsWithScores.sort((a, b) => b.totalScore - a.totalScore);
-
             const tableBody = document.getElementById('finalTableBody');
             let bodyHTML = '';
             const highlightClasses = ['highlight-gold', 'highlight-silver', 'highlight-bronze'];
-
             finalistsWithScores.forEach((player, index) => {
                 const highlightClass = index < 3 ? highlightClasses[index] : '';
                 const emoji = ['🥇', '🥈', '🥉'][index] || `${index + 1}.`;
-
-                bodyHTML += `<tr class="${highlightClass}">`;
-                bodyHTML += `<td class="rank text-2xl">${emoji}</td>`;
-                bodyHTML += `<td class="font-bold text-lg">${formatPlayerName(player.nombre, player.apellido)}</td>`;
+                bodyHTML += `<tr class="${highlightClass}"><td class="rank text-2xl">${emoji}</td><td class="font-bold text-lg">${formatPlayerName(player.nombre, player.apellido)}</td>`;
                 rounds.forEach(round => {
                     const scoreKey = round.toLowerCase().replace(/ /g, '');
                     bodyHTML += `<td class="score">${formatNumber(player[scoreKey] || 0)}</td>`;
                 });
-                bodyHTML += `<td class="score total-score text-xl">${formatNumber(player.totalScore)}</td>`;
-                bodyHTML += '</tr>';
+                bodyHTML += `<td class="score total-score text-xl">${formatNumber(player.totalScore)}</td></tr>`;
             });
             tableBody.innerHTML = bodyHTML;
         }
@@ -447,34 +433,22 @@
             const tournamentType = getTournamentType();
             const finalists = JSON.parse(localStorage.getItem(`finalistas_${tournamentType}`) || '[]');
             const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
-            const sortedWinners = finalists
-                .map(f => ({ ...f, totalScore: calculateTotal(f, tournamentType) }))
-                .sort((a, b) => b.totalScore - a.totalScore);
-
+            const sortedWinners = finalists.map(f => ({ ...f, totalScore: calculateTotal(f, tournamentType) })).sort((a, b) => b.totalScore - a.totalScore);
             const podiumContainer = document.getElementById('winnersPodium');
             podiumContainer.innerHTML = '';
-
-            const prizeConfig = [
-                { prize: prizes.first || 0, label: '1er Lugar', emoji: '🥇' },
-                { prize: prizes.second || 0, label: '2do Lugar', emoji: '🥈' },
-                { prize: prizes.third || 0, label: '3er Lugar', emoji: '🥉' }
-            ];
-
+            const prizeConfig = [ { prize: prizes.first || 0, emoji: '🥇' }, { prize: prizes.second || 0, emoji: '🥈' }, { prize: prizes.third || 0, emoji: '🥉' }];
             for (let i = 0; i < 3; i++) {
                 const winner = sortedWinners[i];
                 if (winner) {
                     const podiumDiv = document.createElement('div');
                     podiumDiv.className = `podium-place podium-${i + 1}`;
-                    podiumDiv.innerHTML = `
-                        <p class="text-5xl mb-2">${prizeConfig[i].emoji}</p>
-                        <h3 class="text-2xl font-bold">${formatPlayerName(winner.nombre, winner.apellido)}</h3>
-                        <p class="text-3xl font-extrabold mt-2">$${formatNumber(prizeConfig[i].prize)}</p>
-                    `;
+                    podiumDiv.innerHTML = `<p class="text-5xl mb-2">${prizeConfig[i].emoji}</p><h3 class="text-2xl font-bold">${formatPlayerName(winner.nombre, winner.apellido)}</h3><p class="text-3xl font-extrabold mt-2">$${formatNumber(prizeConfig[i].prize)}</p>`;
                     podiumContainer.appendChild(podiumDiv);
                 }
             }
         }
         
+        // --- CAMBIO: Función restaurada ---
         function renderLimitsInChipCard() {
             const tournamentType = getTournamentType();
             const tournament = TOURNAMENTS[tournamentType];
@@ -504,8 +478,7 @@
                             <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÁXIMO</h3>
                             <p class="text-xl font-extrabold text-red-600 dark:text-red-400">$${formatNumber(max)}</p>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             } else {
                  limitsContent.innerHTML = '';
             }
@@ -516,34 +489,29 @@
             const tournament = TOURNAMENTS[tournamentType];
             const chipCard = document.getElementById('chip-card');
             const rack = document.getElementById('chip-rack');
-
+            
             if (tournament.type !== 'cards') {
                 chipCard.classList.add('hidden');
-                return;
+            } else {
+                chipCard.classList.remove('hidden');
+                rack.innerHTML = '';
+                const chips = JSON.parse(localStorage.getItem('tournament_chips') || '[]');
+                if (chips.length === 0) { rack.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">No hay fichas definidas.</p>`; return; }
+                chips.forEach(chip => {
+                    const chipEl = document.createElement('div');
+                    chipEl.className = 'chip';
+                    chipEl.style.backgroundColor = chip.color;
+                    const formattedValue = formatNumber(chip.value);
+                    chipEl.textContent = formattedValue;
+                    const len = formattedValue.length;
+                    if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
+                    else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
+                    else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
+                    else { chipEl.style.fontSize = '0.5rem'; }
+                    rack.appendChild(chipEl);
+                });
             }
-
-            chipCard.classList.remove('hidden');
-            rack.innerHTML = '';
-            const chips = JSON.parse(localStorage.getItem('tournament_chips') || '[]');
-            
-            if (chips.length === 0) {
-                rack.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">No hay fichas definidas.</p>`;
-                return;
-            }
-
-            chips.forEach(chip => {
-                const chipEl = document.createElement('div');
-                chipEl.className = 'chip';
-                chipEl.style.backgroundColor = chip.color;
-                const formattedValue = formatNumber(chip.value);
-                chipEl.textContent = formattedValue;
-                const len = formattedValue.length;
-                if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
-                else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
-                else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
-                else { chipEl.style.fontSize = '0.5rem'; }
-                rack.appendChild(chipEl);
-            });
+            updateTopCardsLayout();
         }
 
         function updateRegistrationCard() {
@@ -551,17 +519,31 @@
             const uniquePlayers = new Set(allEntries.map(c => c.rut));
             document.getElementById('totalPlayersDisplay').textContent = uniquePlayers.size;
         }
+        
+        function updateSummaryCard() {
+            const prizePool = localStorage.getItem('prizePool') || '0';
+            const allEntries = getClients().filter(c => !c.isTableBreak);
+            const uniquePlayers = new Set(allEntries.map(c => c.rut));
+            const summaryCard = document.getElementById('summary-card');
+            summaryCard.innerHTML = `
+                <h2 class="text-lg font-bold text-gray-600">RESUMEN DEL TORNEO</h2>
+                <div class="my-2 py-2 border-y-2 border-gray-100 dark:border-gray-700">
+                    <h3 class="text-sm text-gray-500 dark:text-gray-400">POZO A REPARTIR</h3>
+                    <p class="text-3xl font-extrabold text-blue-800 dark:text-blue-400">$${formatNumber(prizePool)}</p>
+                </div>
+                <div>
+                    <h3 class="text-sm text-gray-500 dark:text-gray-400">TOTAL INSCRITOS</h3>
+                    <p class="text-3xl font-extrabold text-blue-800 dark:text-blue-400">${uniquePlayers.size}</p>
+                </div>`;
+        }
 
         function updateCountdownDisplay() {
             const endTimeString = localStorage.getItem('registrationEndTime');
             if (!endTimeString) return;
-
             const [hours, minutes] = endTimeString.split(':');
             const now = new Date();
             const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
-            
             const totalSeconds = Math.floor((endTime.getTime() - now.getTime()) / 1000);
-
             if (totalSeconds >= 0) {
                 const mins = Math.floor(totalSeconds / 60);
                 const secs = totalSeconds % 60;
@@ -569,23 +551,21 @@
                 if(timerEl) timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
             }
         }
-
-        // --- CAMBIO: Lógica de reorganización de tarjetas ---
+        
         function checkRegistrationStatus() {
             const registrationCard = document.getElementById('registration-card');
+            const summaryCard = document.getElementById('summary-card');
             const endTimeDisplay = document.getElementById('endTimeDisplay');
             const warningMessage = document.getElementById('warningMessage');
-            const grid = document.getElementById('top-cards-grid');
-            const chipCard = document.getElementById('chip-card');
             const endTimeString = localStorage.getItem('registrationEndTime');
 
             if (!endTimeString) {
                 registrationCard.classList.remove('hidden');
+                summaryCard.classList.add('hidden');
                 endTimeDisplay.textContent = 'Cierre no definido';
                 warningMessage.classList.add('hidden');
                 if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-                grid.classList.remove('md:grid-cols-1', 'md:grid-cols-2');
-                grid.classList.add('md:grid-cols-3');
+                updateTopCardsLayout();
                 return;
             }
             
@@ -596,21 +576,13 @@
 
             if (minutesRemaining <= 0) {
                 registrationCard.classList.add('hidden');
+                summaryCard.classList.remove('hidden');
+                updateSummaryCard();
                 if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-                
-                grid.classList.remove('md:grid-cols-3', 'md:grid-cols-2', 'md:grid-cols-1');
-                if (chipCard.classList.contains('hidden')) {
-                    grid.classList.add('md:grid-cols-1');
-                } else {
-                    grid.classList.add('md:grid-cols-2');
-                }
             } else {
                 registrationCard.classList.remove('hidden');
+                summaryCard.classList.add('hidden');
                 endTimeDisplay.textContent = `Cierre a las ${endTimeString} hrs.`;
-                
-                grid.classList.remove('md:grid-cols-1', 'md:grid-cols-2');
-                grid.classList.add('md:grid-cols-3');
-                
                 if (minutesRemaining <= 20) {
                     warningMessage.classList.remove('hidden');
                     if (!countdownInterval) {
@@ -622,8 +594,8 @@
                     if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
                 }
             }
+            updateTopCardsLayout();
         }
-        // --- FIN DEL CAMBIO ---
 
         function updateClock() {
             const now = new Date();
@@ -638,24 +610,18 @@
                 const themeCommand = JSON.parse(localStorage.getItem('theme_command') || '{}');
                 document.body.classList.toggle('dark', themeCommand.theme === 'dark');
             } catch (e) {}
-
             updateActiveView();
             updateClock();
-            
             updatePrizeCard();
             prizeInterval = setInterval(updatePrizeCard, 4000);
-            
             setInterval(updateClock, 1000);
             setInterval(checkRegistrationStatus, 10000);
             setInterval(updateRegistrationCard, 5000);
-
             window.addEventListener('storage', (event) => {
                 if (event.key === 'fullscreen_command') {
                     goFullscreen();
                 } else if (event.key === 'theme_command') {
-                    try {
-                        document.body.classList.toggle('dark', JSON.parse(event.newValue).theme === 'dark');
-                    } catch(e) {}
+                    try { document.body.classList.toggle('dark', JSON.parse(event.newValue).theme === 'dark'); } catch(e) {}
                 } else {
                      updateActiveView();
                      if (['tournamentPrizes', 'prizePool'].includes(event.key)) {
