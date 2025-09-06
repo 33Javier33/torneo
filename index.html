@@ -77,9 +77,11 @@
             <div class="mb-4"><label class="block font-bold mb-1">Nombre:</label><p id="editNombre" class="p-2 bg-gray-100 rounded"></p></div>
             <div class="mb-4"><label class="block font-bold mb-1">RUT:</label><p id="editRut" class="p-2 bg-gray-100 rounded"></p></div>
             <div class="mb-4">
-                <label for="editTipoCupon" class="block font-bold mb-1">Tipo de Cupón:</label>
+                <label for="editTipoCupon" class="block font-bold mb-1">Tipo:</label>
                 <select id="editTipoCupon" class="w-full p-2 border rounded-md">
-                    <option value="ninguno">Ninguno</option><option value="torneo">Cupón Torneo</option><option value="canjeo">Cupón Canjeo</option>
+                    <option value="ninguno">Ninguno</option>
+                    <option value="sorteo">Cupón Sorteo (CS)</option>
+                    <option value="canje">Ticket Canje (TC)</option>
                 </select>
             </div>
             <button onclick="saveClientChanges()" class="w-full bg-blue-600 text-white py-2 rounded-md font-bold hover:bg-blue-700 transition-colors">Guardar Cambios</button>
@@ -148,7 +150,7 @@
             <div class="flex flex-wrap gap-4 justify-between items-center mt-6 border-t pt-4">
                 <button onclick="sendFullscreenCommand()" class="bg-cyan-600 text-white px-6 py-2 rounded-md font-bold hover:bg-cyan-700 transition-colors">Pantalla Completa en Torneo</button>
                 <div class="flex flex-wrap gap-4">
-                    <button onclick="exportToPDF()" class="bg-red-600 text-white px-6 py-2 rounded-md font-bold hover:bg-red-700 transition-colors">Exportar PDF</button>
+                    <button onclick="exportToPDF({isFinalReport: false})" class="bg-red-600 text-white px-6 py-2 rounded-md font-bold hover:bg-red-700 transition-colors">Exportar PDF</button>
                     <button onclick="startFinal()" class="bg-yellow-500 text-white px-6 py-2 rounded-md font-bold hover:bg-yellow-600 transition-colors">Iniciar Final</button>
                 </div>
             </div>
@@ -172,14 +174,14 @@
 
     <div class="container">
         <div id="classificationView">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-2 text-center">Planilla de Torneos</h1>
+            <h1 id="mainTournamentTitle" class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-2 text-center">Planilla de Torneos</h1>
             
             <div class="text-center mb-8">
                 <p id="mainDateDisplay" class="text-xl font-bold text-gray-600"></p>
                 <div id="statsContainer" class="mt-4 p-4 bg-white rounded-lg shadow-md flex flex-col sm:flex-row justify-around text-center gap-4 max-w-3xl mx-auto">
                     <div><h3 class="font-bold text-gray-600">Jugadores Únicos</h3><p id="totalCount" class="text-2xl font-extrabold text-blue-800">0</p></div>
-                    <div><h3 class="font-bold text-gray-600">Cupones Torneo (Únicos)</h3><p id="torneoCount" class="text-2xl font-extrabold text-green-600">0</p></div>
-                    <div><h3 class="font-bold text-gray-600">Cupones Canjeo (Únicos)</h3><p id="canjeoCount" class="text-2xl font-extrabold text-indigo-600">0</p></div>
+                    <div><h3 class="font-bold text-gray-600">Cupón Sorteo (CS)</h3><p id="sorteoCount" class="text-2xl font-extrabold text-green-600">0</p></div>
+                    <div><h3 class="font-bold text-gray-600">Ticket Canje (TC)</h3><p id="canjeCount" class="text-2xl font-extrabold text-indigo-600">0</p></div>
                 </div>
             </div>
 
@@ -198,8 +200,8 @@
                     <input type="text" id="addRut" placeholder="RUT (si no existe)" oninput="formatRut(this)" maxlength="12" class="flex-grow p-2 border rounded-md min-w-[180px] hidden">
                     <select id="addTipoCupon" class="flex-grow p-2 border rounded-md min-w-[180px]">
                         <option value="ninguno">Ninguno</option>
-                        <option value="torneo">Cupón Torneo</option>
-                        <option value="canjeo">Cupón Canjeo</option>
+                        <option value="sorteo">Cupón Sorteo (CS)</option>
+                        <option value="canje">Ticket Canje (TC)</option>
                     </select>
                     <button onclick="addClientToTournament()" class="bg-green-600 text-white px-6 py-2 rounded-md font-bold hover:bg-green-700 transition-colors flex-grow sm:flex-grow-0">Añadir</button>
                     <div id="searchResults" class="absolute top-full mt-1 w-full bg-white border rounded-md shadow-lg z-10 hidden"></div>
@@ -337,15 +339,15 @@
             const uniquePlayerRuts = new Set(clientEntries.map(c => c.rut));
             document.getElementById('totalCount').textContent = uniquePlayerRuts.size;
 
-            const uniqueTorneoCouponRuts = new Set(clientEntries.filter(c => c.cuponTorneo).map(c => c.rut));
-            document.getElementById('torneoCount').textContent = uniqueTorneoCouponRuts.size;
+            const uniqueSorteoCouponRuts = new Set(clientEntries.filter(c => c.cuponSorteo).map(c => c.rut));
+            document.getElementById('sorteoCount').textContent = uniqueSorteoCouponRuts.size;
             
-            const uniqueCanjeoCouponRuts = new Set(clientEntries.filter(c => c.cuponCanjeo).map(c => c.rut));
-            document.getElementById('canjeoCount').textContent = uniqueCanjeoCouponRuts.size;
+            const uniqueCanjeCouponRuts = new Set(clientEntries.filter(c => c.ticketCanje).map(c => c.rut));
+            document.getElementById('canjeCount').textContent = uniqueCanjeCouponRuts.size;
             
             let headers = `<tr><th class="p-3 w-12"><input type="checkbox" onchange="toggleSelectAll(this)"></th><th class="p-3">Cliente</th>`;
             if (isRoulette) headers += `<th class="p-3">Color</th>`;
-            headers += `<th class="p-3">Cupón</th>`;
+            headers += `<th class="p-3">Tipo</th>`;
             rounds.forEach(round => headers += `<th class="p-3">${round}</th>`);
             headers += `<th class="p-3">Total</th><th class="p-3 text-center">Acciones</th></tr>`;
             tableHead.innerHTML = headers;
@@ -394,8 +396,8 @@
                 }
                 
                 let cuponTag = '<span class="bg-slate-400 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Ninguno</span>';
-                if (client.cuponTorneo) cuponTag = '<span class="bg-green-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Torneo</span>';
-                else if (client.cuponCanjeo) cuponTag = '<span class="bg-indigo-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">Canjeo</span>';
+                if (client.cuponSorteo) cuponTag = '<span class="bg-green-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">CS</span>';
+                else if (client.ticketCanje) cuponTag = '<span class="bg-indigo-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow">TC</span>';
                 tr.insertCell().innerHTML = `<div class="p-2 text-center">${cuponTag}</div>`;
                 
                 rounds.forEach(round => {
@@ -476,8 +478,8 @@
             const clientsTorneo = getClientesTorneo(tournamentType);
             const existingEntries = clientsTorneo.filter(c => c.rut === finalRut && !c.isTableBreak);
             if (existingEntries.length >= 2) { showToast(`${nombre} ${apellido} ya utilizó sus 2 entradas.`); return; }
-            if (tipoCupon === 'torneo' && existingEntries.some(e => e.cuponTorneo)) { showToast('Este participante ya utilizó el Cupón Torneo.'); return; }
-            if (tipoCupon === 'canjeo' && existingEntries.some(e => e.cuponCanjeo)) { showToast('Este participante ya utilizó el Cupón Canjeo.'); return; }
+            if (tipoCupon === 'sorteo' && existingEntries.some(e => e.cuponSorteo)) { showToast('Este participante ya utilizó el Cupón Sorteo.'); return; }
+            if (tipoCupon === 'canje' && existingEntries.some(e => e.ticketCanje)) { showToast('Este participante ya utilizó el Ticket Canje.'); return; }
             const clientesBase = getClientesBase();
             if (!clientesBase.some(c => c.rut === finalRut)) {
                 clientesBase.push({ nombre, apellido, rut: finalRut });
@@ -486,7 +488,8 @@
             const clientData = { 
                 id: Date.now() + '-' + Math.random().toString(36).substring(2, 9),
                 nombre, apellido, rut: finalRut, color: PREDEFINED_COLORS[0],
-                cuponTorneo: tipoCupon === 'torneo', cuponCanjeo: tipoCupon === 'canjeo'
+                cuponSorteo: tipoCupon === 'sorteo',
+                ticketCanje: tipoCupon === 'canje'
             };
             getTournamentRounds(tournamentType).forEach(round => clientData[round.toLowerCase().replace(/ /g, '')] = '');
             clientsTorneo.push(clientData);
@@ -535,7 +538,7 @@
             document.getElementById('editIndex').value = index;
             document.getElementById('editNombre').textContent = `${client.nombre} ${client.apellido}`;
             document.getElementById('editRut').textContent = client.rut;
-            document.getElementById('editTipoCupon').value = client.cuponTorneo ? "torneo" : client.cuponCanjeo ? "canjeo" : "ninguno";
+            document.getElementById('editTipoCupon').value = client.cuponSorteo ? "sorteo" : client.ticketCanje ? "canje" : "ninguno";
             document.getElementById('editModal').style.display = 'flex';
         }
         function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
@@ -546,8 +549,8 @@
             const tournamentType = document.getElementById('tournamentSelector').value;
             let clients = getClientesTorneo(tournamentType);
             if (clients[index] && !clients[index].isTableBreak) {
-                clients[index].cuponTorneo = (newCuponStatus === 'torneo');
-                clients[index].cuponCanjeo = (newCuponStatus === 'canjeo');
+                clients[index].cuponSorteo = (newCuponStatus === 'sorteo');
+                clients[index].ticketCanje = (newCuponStatus === 'canje');
                 saveClientesTorneo(tournamentType, clients);
                 renderClients(tournamentType); initializeSortable();
                 closeEditModal(); showToast("Cambios guardados.", true);
@@ -602,30 +605,45 @@
             chips.forEach((chip, index) => {
                 const chipRow = document.createElement('div');
                 chipRow.className = 'flex items-center gap-2';
+                const filename = chip.image ? chip.image.split('/').pop() : '';
                 chipRow.innerHTML = `
                     <span class="color-swatch" style="background-color: ${chip.color};" onclick="openColorModal(${index}, 'chip')"></span>
                     <input type="text" value="${formatNumberForDisplay(chip.value)}" oninput="this.value = formatNumberForDisplay(this.value.replace(/\\./g, ''))" onchange="updateChipValue(${index}, this.value)" placeholder="Valor Ficha" class="p-2 border rounded-md w-full">
+                    <input type="text" value="${filename}" onchange="updateChipImage(${index}, this.value)" placeholder="Nombre archivo (ej: ficha.png)" class="p-2 border rounded-md w-full">
                     <button onclick="removeChip(${index})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">X</button>
                 `;
                 container.appendChild(chipRow);
             });
         }
+        
         function addChip() {
             let chips = getChips();
-            chips.push({ value: '1000', color: '#6D4C41' });
+            chips.push({ value: '1000', color: '#6D4C41', image: '' });
             saveChips(chips);
             renderChipConfig();
         }
+
         function removeChip(index) {
             let chips = getChips();
             chips.splice(index, 1);
             saveChips(chips);
             renderChipConfig();
         }
+
         function updateChipValue(index, value) {
             let chips = getChips();
-            chips[index].value = value.replace(/\./g, '');
-            saveChips(chips);
+            if (chips[index]) {
+                chips[index].value = value.replace(/\./g, '');
+                saveChips(chips);
+            }
+        }
+        
+        function updateChipImage(index, filename) {
+            let chips = getChips();
+            if (chips[index]) {
+                chips[index].image = filename.trim() ? `fichas/${filename.trim()}` : '';
+                saveChips(chips);
+            }
         }
 
         // --- LÓGICA DE VISTAS ---
@@ -712,7 +730,110 @@
         }
 
         // --- EXPORTACIÓN, GUARDADO Y CARGA ---
-        async function exportToPDF(options = { isFinalReport: false }) { /* ... Implementación omitida por brevedad ... */ }
+        async function exportToPDF(options = { isFinalReport: false }) {
+            const { PDFDocument, rgb, StandardFonts } = PDFLib;
+            const pdfDoc = await PDFDocument.create();
+            const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+            const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+            const page = pdfDoc.addPage();
+            const { width, height } = page.getSize();
+            let y = height - 40;
+
+            const formatRutForPDF = (rut) => (rut || '').replace(/[\.\-]/g, '');
+            const drawText = (text, x, size, isBold = false) => {
+                page.drawText(text, { x, y, size, font: isBold ? boldFont : font, color: rgb(0, 0, 0) });
+            };
+
+            const tournamentType = document.getElementById('tournamentSelector').value;
+            const tournament = TOURNAMENTS[tournamentType];
+            const date = localStorage.getItem('tournamentDate') || 'N/A';
+            const director = localStorage.getItem('tournamentDirector') || 'N/A';
+            const allEntries = getClientesTorneo(tournamentType);
+            const bestEntries = getBestEntryPerPlayer(allEntries, tournamentType);
+            const totalPlayers = bestEntries.length;
+            const totalCS = new Set(allEntries.filter(c => c.cuponSorteo).map(c => c.rut)).size;
+            const totalTC = new Set(allEntries.filter(c => c.ticketCanje).map(c => c.rut)).size;
+
+            // --- Dibujar Cabecera del Documento ---
+            drawText(tournament.name, 50, 24, true); y -= 20;
+            drawText(`Fecha: ${date} | Encargado: ${director}`, 50, 12); y -= 20;
+            drawText(`Jugadores Únicos: ${totalPlayers} | Cupones Sorteo (CS): ${totalCS} | Tickets Canje (TC): ${totalTC}`, 50, 12); y -= 15;
+            page.drawLine({ start: { x: 50, y }, end: { x: width - 50, y: y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+            y -= 30;
+
+            if (options.isFinalReport) {
+                // --- ACTA DE GANADORES ---
+                drawText('Acta de Entrega de Premios', 50, 18, true); y -= 30;
+
+                const finalists = getFinalists(tournamentType);
+                const sortedFinalists = [...finalists].sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
+                const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
+                const prizeConfig = [
+                    { prize: prizes.first || 0, label: '1er Lugar' }, { prize: prizes.second || 0, label: '2do Lugar' }, { prize: prizes.third || 0, label: '3er Lugar' }
+                ];
+                
+                prizeConfig.forEach((p, i) => {
+                    if (sortedFinalists[i]) {
+                        const winner = sortedFinalists[i];
+                        drawText(p.label, 50, 14, true); y -= 25;
+                        drawText(`RUT: ${formatRutForPDF(winner.rut)}`, 60, 12); y -= 20;
+                        drawText(`Nombre: ${winner.nombre} ${winner.apellido}`, 60, 12); y -= 20;
+                        drawText(`Monto a Recibir: $${parseInt(p.prize).toLocaleString('es-CL')}`, 60, 12); y -= 30;
+                        drawText('Firma:', 60, 12);
+                        page.drawLine({ start: { x: 100, y: y-2 }, end: { x: 300, y: y-2 }, thickness: 0.5 });
+                        y -= 50;
+                    }
+                });
+
+            } else {
+                // --- INFORME DE CLASIFICACIÓN Y FINALISTAS ---
+                drawText('Informe de Clasificación', 50, 18, true); y -= 30;
+                
+                // Headers de la tabla
+                drawText('RUT', 50, 10, true); drawText('Nombre y Apellido', 130, 10, true);
+                drawText('Tipo', 350, 10, true); drawText('Puntaje', 450, 10, true);
+                y -= 5;
+                page.drawLine({ start: { x: 50, y }, end: { x: width - 50, y: y }, thickness: 0.5 });
+                y -= 15;
+                
+                bestEntries.forEach(client => {
+                    if (y < 40) { page = pdfDoc.addPage(); y = height - 40; }
+                    drawText(formatRutForPDF(client.rut), 50, 10);
+                    drawText(`${client.nombre} ${client.apellido}`, 130, 10);
+                    drawText(client.cuponSorteo ? 'CS' : client.ticketCanje ? 'TC' : '-', 350, 10);
+                    drawText(calculateTotal(client, tournamentType).toLocaleString('es-CL'), 450, 10);
+                    y -= 15;
+                });
+
+                const finalists = getFinalists(tournamentType);
+                if (finalists.length > 0) {
+                    y -= 20;
+                    if (y < 80) { page = pdfDoc.addPage(); y = height - 40; }
+                    drawText('Finalistas', 50, 18, true); y -= 30;
+                    drawText('RUT', 50, 10, true); drawText('Nombre y Apellido', 130, 10, true); drawText('Puntaje Final', 350, 10, true);
+                    y -= 5;
+                    page.drawLine({ start: { x: 50, y }, end: { x: width - 50, y: y }, thickness: 0.5 });
+                    y -= 15;
+
+                    finalists.forEach(finalist => {
+                        if (y < 40) { page = pdfDoc.addPage(); y = height - 40; }
+                        drawText(formatRutForPDF(finalist.rut), 50, 10);
+                        drawText(`${finalist.nombre} ${finalist.apellido}`, 130, 10);
+                        drawText(calculateTotal(finalist, tournamentType).toLocaleString('es-CL'), 350, 10);
+                        y -= 15;
+                    });
+                }
+            }
+
+            // --- Guardar y descargar el PDF ---
+            const pdfBytes = await pdfDoc.save();
+            const fileName = options.isFinalReport 
+                ? `Acta_Ganadores_${tournamentType}_${date}.pdf` 
+                : `Informe_Clasificacion_${tournamentType}_${date}.pdf`;
+            download(pdfBytes, fileName, "application/pdf");
+            showToast("PDF generado correctamente.", true);
+        }
+
 
         function saveTournamentToFile() {
             const tournamentType = document.getElementById('tournamentSelector').value;
@@ -921,6 +1042,8 @@
             const tournament = TOURNAMENTS[tournamentType];
             localStorage.setItem('selectedTournament', tournamentType);
             
+            document.getElementById('mainTournamentTitle').textContent = tournament.name;
+            
             const pokerBlackjackConfig = document.getElementById('pokerBlackjackConfig');
             const rouletteLimitsConfig = document.getElementById('rouletteLimitsConfig');
             
@@ -998,3 +1121,5 @@
     </script>
 </body>
 </html>
+
+
