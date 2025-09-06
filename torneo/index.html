@@ -184,6 +184,9 @@
             border: 3px solid white;
             outline: 2px solid #ccc;
             line-height: 1;
+            /* Estilos para la imagen de fondo */
+            background-size: cover;
+            background-position: center;
         }
         .finalist-row {
             background-color: #dcfce7 !important;
@@ -204,20 +207,16 @@
 </head>
 <body>
 
-    <!-- CAMBIO: Nueva estructura para el encabezado -->
     <header class="container flex justify-between items-center mb-6">
-        <!-- Columna Izquierda: Fecha y Hora -->
         <div id="top-left-info" class="flex-shrink-0">
             <div id="tournamentDate"></div>
             <div id="clock" class="clock">00:00:00</div>
         </div>
         
-        <!-- Columna Central: Título -->
         <div class="flex-grow text-center">
             <h1 id="tournamentTitle" class="text-4xl md:text-5xl font-extrabold text-blue-900">Cargando...</h1>
         </div>
         
-        <!-- Columna Derecha: Logo -->
         <a href="../" class="flex-shrink-0 block transition-transform duration-200 hover:scale-105">
             <img src="img/dreams1.png" 
                  alt="Logo del Casino y enlace a Planilla" 
@@ -227,8 +226,6 @@
     </header>
 
     <div id="classificationView" class="w-full">
-        <!-- El div del título se movió al nuevo header -->
-
         <div id="top-cards-grid" class="grid gap-4 mb-6 transition-all duration-500 ease-in-out w-full px-6 box-border">
             <div id="prize-card-container" class="card text-center">
                 <div id="prize-card-content"></div>
@@ -324,10 +321,10 @@
             const visibleCards = cards.filter(card => card && !card.classList.contains('hidden'));
             const visibleCount = visibleCards.length;
             
-            grid.classList.remove('grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4');
+            grid.classList.remove('grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-4');
             
             if (visibleCount > 0) {
-                grid.classList.add(`grid-cols-${visibleCount}`);
+                grid.classList.add('grid-cols-1', `sm:grid-cols-2`, `md:grid-cols-${Math.min(visibleCount, 3)}`, `lg:grid-cols-${Math.min(visibleCount, 4)}`);
             }
         }
         
@@ -496,28 +493,44 @@
             } else { limitsContent.innerHTML = ''; }
         }
 
+        // --- MODIFICADO ---
         function renderChipRack() {
             const tournamentType = getTournamentType();
             const tournament = TOURNAMENTS[tournamentType];
             const chipCard = document.getElementById('chip-card');
             const rack = document.getElementById('chip-rack');
-            if (tournament.type !== 'cards') { chipCard.classList.add('hidden'); } 
-            else {
+            if (tournament.type !== 'cards') {
+                chipCard.classList.add('hidden');
+            } else {
                 chipCard.classList.remove('hidden');
                 rack.innerHTML = '';
                 const chips = JSON.parse(localStorage.getItem('tournament_chips') || '[]');
-                if (chips.length === 0) { rack.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">No hay fichas definidas.</p>`; return; }
+                
+                if (chips.length === 0) {
+                    rack.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">No hay fichas definidas.</p>`;
+                    return;
+                }
+                
                 chips.forEach(chip => {
                     const chipEl = document.createElement('div');
                     chipEl.className = 'chip';
-                    chipEl.style.backgroundColor = chip.color;
-                    const formattedValue = formatNumber(chip.value);
-                    chipEl.textContent = formattedValue;
-                    const len = formattedValue.length;
-                    if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
-                    else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
-                    else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
-                    else { chipEl.style.fontSize = '0.5rem'; }
+                    
+                    // Lógica para mostrar imagen o texto
+                    if (chip.image && chip.image.trim() !== '') {
+                        chipEl.style.backgroundImage = `url('${chip.image}')`;
+                        // Opcional: poner un color de fondo de respaldo si la imagen no carga
+                        chipEl.style.backgroundColor = chip.color;
+                    } else {
+                        // Comportamiento anterior si no hay imagen
+                        chipEl.style.backgroundColor = chip.color;
+                        const formattedValue = formatNumber(chip.value);
+                        chipEl.textContent = formattedValue;
+                        const len = formattedValue.length;
+                        if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
+                        else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
+                        else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
+                        else { chipEl.style.fontSize = '0.5rem'; }
+                    }
                     rack.appendChild(chipEl);
                 });
             }
@@ -638,5 +651,4 @@
     </script>
 </body>
 </html>
-
 
