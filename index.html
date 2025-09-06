@@ -663,12 +663,11 @@
             }
         }
         
-        // --- MODIFICADO ---
         function updateChipImage(index, filename) {
             let chips = getChips();
             if (chips[index]) {
-                // Añade una barra al principio para crear una ruta absoluta desde la raíz del sitio.
-                chips[index].image = filename.trim() ? `/fichas/${filename.trim()}` : '';
+                // CORRECCIÓN: Se guarda una ruta relativa simple.
+                chips[index].image = filename.trim() ? `fichas/${filename.trim()}` : '';
                 saveChips(chips);
                 showToast("Imagen de ficha actualizada.", true);
             }
