@@ -217,7 +217,7 @@
         </div>
         
         <a href="../index.html" class="flex-shrink-0 block transition-transform duration-200 hover:scale-105">
-            <img src="img/dreams1.png" 
+            <img src="../img/dreams1.png" 
                  alt="Logo del Casino y enlace a Planilla" 
                  class="w-32 h-auto rounded-lg shadow-lg"
                  onerror="this.onerror=null;this.src='https://placehold.co/120x90/1e293b/f1f5f9?text=LOGO';">
@@ -273,6 +273,52 @@
         let prizeInterval;
         let countdownInterval = null;
         
+        function getTournamentType() { return localStorage.getItem('selectedTournament') || 'ruleta'; }
+        function getClients() { return JSON.parse(localStorage.getItem(`clientes_${getTournamentType()}`) || '[]'); }
+        function formatNumber(num) { return Number(num || 0).toLocaleString('es-CL'); }
+
+        function renderChipRack() {
+            const tournamentType = getTournamentType();
+            const tournament = TOURNAMENTS[tournamentType];
+            const chipCard = document.getElementById('chip-card');
+            const rack = document.getElementById('chip-rack');
+            if (tournament.type !== 'cards') {
+                chipCard.classList.add('hidden');
+            } else {
+                chipCard.classList.remove('hidden');
+                rack.innerHTML = '';
+                const chips = JSON.parse(localStorage.getItem('tournament_chips') || '[]');
+                
+                if (chips.length === 0) {
+                    rack.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">No hay fichas definidas.</p>`;
+                    return;
+                }
+                
+                chips.forEach(chip => {
+                    const chipEl = document.createElement('div');
+                    chipEl.className = 'chip';
+                    
+                    if (chip.image && chip.image.trim() !== '') {
+                        chipEl.style.backgroundImage = `url('../fichas/${chip.image}')`;
+                    }
+                    chipEl.style.backgroundColor = chip.color;
+                    
+                    const formattedValue = formatNumber(chip.value);
+                    chipEl.textContent = formattedValue;
+                    
+                    const len = formattedValue.length;
+                    if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
+                    else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
+                    else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
+                    else { chipEl.style.fontSize = '0.5rem'; }
+
+                    rack.appendChild(chipEl);
+                });
+            }
+            updateTopCardsLayout();
+        }
+
+        // --- El resto del código JS completo va aquí ---
         function goFullscreen() {
             const elem = document.documentElement;
             if (elem.requestFullscreen) { elem.requestFullscreen(); } 
@@ -360,16 +406,13 @@
 
         function getTournamentRounds(tournamentType) {
             const tournament = TOURNAMENTS[tournamentType];
+            if (!tournament) return [];
             if (tournament.type === 'roulette') {
                 const ballCount = parseInt(localStorage.getItem('rouletteBallCount') || '3');
                 return Array.from({ length: ballCount }, (_, i) => `Bolita ${i + 1}`);
             }
             return tournament.rounds;
         }
-
-        function getTournamentType() { return localStorage.getItem('selectedTournament') || 'ruleta'; }
-        function getClients() { return JSON.parse(localStorage.getItem(`clientes_${getTournamentType()}`) || '[]'); }
-        function formatNumber(num) { return Number(num || 0).toLocaleString('es-CL'); }
 
         function getTournamentDate() {
             const dateStr = localStorage.getItem('tournamentDate');
@@ -407,7 +450,9 @@
             const rounds = getTournamentRounds(tournamentType);
             const tableHeader = document.getElementById('tableHeader');
             let headerHTML = '<tr><th class="w-12">#</th><th>Jugador</th>';
-            rounds.forEach(round => { headerHTML += `<th class="text-right">${round}</th>`; });
+            if(rounds) {
+                rounds.forEach(round => { headerHTML += `<th class="text-right">${round}</th>`; });
+            }
             headerHTML += '<th class="text-right">Total</th></tr>';
             tableHeader.innerHTML = headerHTML;
             const bestEntries = getBestEntryPerPlayer(allEntries, tournamentType);
@@ -423,10 +468,12 @@
             playersWithScores.forEach((player, index) => {
                 const rowClass = index < finalistsCount ? 'finalist-row' : '';
                 bodyHTML += `<tr class="${rowClass}"><td class="rank">${index + 1}</td><td class="font-bold">${formatPlayerName(player.nombre, player.apellido)}</td>`;
-                rounds.forEach(round => {
-                    const scoreKey = round.toLowerCase().replace(/ /g, '');
-                    bodyHTML += `<td class="score">${formatNumber(player[scoreKey] || 0)}</td>`;
-                });
+                if(rounds) {
+                    rounds.forEach(round => {
+                        const scoreKey = round.toLowerCase().replace(/ /g, '');
+                        bodyHTML += `<td class="score">${formatNumber(player[scoreKey] || 0)}</td>`;
+                    });
+                }
                 bodyHTML += `<td class="score total-score">${formatNumber(player.totalScore)}</td></tr>`;
             });
             tableBody.innerHTML = bodyHTML;
@@ -438,7 +485,9 @@
             const rounds = getTournamentRounds(tournamentType);
             const tableHeader = document.getElementById('finalTableHeader');
             let headerHTML = '<tr><th class="w-16">Lugar</th><th>Finalista</th>';
-            rounds.forEach(round => { headerHTML += `<th class="text-right">${round}</th>`; });
+            if(rounds) {
+                rounds.forEach(round => { headerHTML += `<th class="text-right">${round}</th>`; });
+            }
             headerHTML += '<th class="text-right">Total Final</th></tr>';
             tableHeader.innerHTML = headerHTML;
             const finalistsWithScores = finalists.map(f => ({ ...f, totalScore: calculateTotal(f, tournamentType) }));
@@ -450,10 +499,12 @@
                 const highlightClass = index < 3 ? highlightClasses[index] : '';
                 const emoji = ['🥇', '🥈', '🥉'][index] || `${index + 1}.`;
                 bodyHTML += `<tr class="${highlightClass}"><td class="rank text-2xl">${emoji}</td><td class="font-bold text-lg">${formatPlayerName(player.nombre, player.apellido)}</td>`;
-                rounds.forEach(round => {
-                    const scoreKey = round.toLowerCase().replace(/ /g, '');
-                    bodyHTML += `<td class="score">${formatNumber(player[scoreKey] || 0)}</td>`;
-                });
+                if(rounds){
+                    rounds.forEach(round => {
+                        const scoreKey = round.toLowerCase().replace(/ /g, '');
+                        bodyHTML += `<td class="score">${formatNumber(player[scoreKey] || 0)}</td>`;
+                    });
+                }
                 bodyHTML += `<td class="score total-score text-xl">${formatNumber(player.totalScore)}</td></tr>`;
             });
             tableBody.innerHTML = bodyHTML;
@@ -490,47 +541,6 @@
             if (min || max) {
                 limitsContent.innerHTML = `<div class="flex justify-around items-center w-full"><div><h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÍNIMO</h3><p class="text-lg md:text-xl font-extrabold text-green-600 dark:text-green-400">$${formatNumber(min)}</p></div><div><h3 class="text-xs font-bold text-gray-500 dark:text-gray-400">MÁXIMO</h3><p class="text-lg md:text-xl font-extrabold text-red-600 dark:text-red-400">$${formatNumber(max)}</p></div></div>`;
             } else { limitsContent.innerHTML = ''; }
-        }
-
-        function renderChipRack() {
-            const tournamentType = getTournamentType();
-            const tournament = TOURNAMENTS[tournamentType];
-            const chipCard = document.getElementById('chip-card');
-            const rack = document.getElementById('chip-rack');
-            if (tournament.type !== 'cards') {
-                chipCard.classList.add('hidden');
-            } else {
-                chipCard.classList.remove('hidden');
-                rack.innerHTML = '';
-                const chips = JSON.parse(localStorage.getItem('tournament_chips') || '[]');
-                
-                if (chips.length === 0) {
-                    rack.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">No hay fichas definidas.</p>`;
-                    return;
-                }
-                
-                chips.forEach(chip => {
-                    const chipEl = document.createElement('div');
-                    chipEl.className = 'chip';
-                    
-                    if (chip.image && chip.image.trim() !== '') {
-                        chipEl.style.backgroundImage = `url('../fichas/${chip.image}')`;
-                    }
-                    chipEl.style.backgroundColor = chip.color;
-                    
-                    const formattedValue = formatNumber(chip.value);
-                    chipEl.textContent = formattedValue;
-                    
-                    const len = formattedValue.length;
-                    if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
-                    else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
-                    else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
-                    else { chipEl.style.fontSize = '0.5rem'; }
-
-                    rack.appendChild(chipEl);
-                });
-            }
-            updateTopCardsLayout();
         }
 
         function updateRegistrationCard() {
