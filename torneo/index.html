@@ -217,7 +217,7 @@
         </div>
         
         <a href="../index.html" class="flex-shrink-0 block transition-transform duration-200 hover:scale-105">
-            <img src="../img/dreams1.png" 
+            <img src="img/dreams1.png" 
                  alt="Logo del Casino y enlace a Planilla" 
                  class="w-32 h-auto rounded-lg shadow-lg"
                  onerror="this.onerror=null;this.src='https://placehold.co/120x90/1e293b/f1f5f9?text=LOGO';">
@@ -260,8 +260,6 @@
     <footer class="container mt-auto pt-8 text-center text-gray-500 text-sm"><p>CarlosPN Interactive®</p></footer>
 
     <script>
-        // --- CÓDIGO JAVASCRIPT ---
-        // (El código completo se omite por brevedad, pero la función clave se muestra a continuación)
         const TOURNAMENTS = {
             ruleta: { name: 'Torneo de Ruleta', type: 'roulette', finalistsCount: 5 },
             draw_poker: { name: 'Torneo de Draw Poker', rounds: ['Puntaje'], type: 'cards', finalistsCount: 6 },
@@ -274,8 +272,7 @@
         let prizeViewIndex = 0;
         let prizeInterval;
         let countdownInterval = null;
-
-        // --- El resto del JS ---
+        
         function goFullscreen() {
             const elem = document.documentElement;
             if (elem.requestFullscreen) { elem.requestFullscreen(); } 
@@ -517,19 +514,19 @@
                     chipEl.className = 'chip';
                     
                     if (chip.image && chip.image.trim() !== '') {
-                        // CORRECCIÓN: Se construye la ruta relativa correcta.
                         chipEl.style.backgroundImage = `url('../fichas/${chip.image}')`;
-                        chipEl.style.backgroundColor = chip.color;
-                    } else {
-                        chipEl.style.backgroundColor = chip.color;
-                        const formattedValue = formatNumber(chip.value);
-                        chipEl.textContent = formattedValue;
-                        const len = formattedValue.length;
-                        if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
-                        else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
-                        else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
-                        else { chipEl.style.fontSize = '0.5rem'; }
                     }
+                    chipEl.style.backgroundColor = chip.color;
+                    
+                    const formattedValue = formatNumber(chip.value);
+                    chipEl.textContent = formattedValue;
+                    
+                    const len = formattedValue.length;
+                    if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
+                    else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
+                    else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
+                    else { chipEl.style.fontSize = '0.5rem'; }
+
                     rack.appendChild(chipEl);
                 });
             }
