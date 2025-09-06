@@ -20,7 +20,7 @@
             background-color: #f0f4f8;
             background: 
                 linear-gradient(rgba(240, 244, 248, 0.9), rgba(240, 244, 248, 0.9)),
-                url('img/dreams1.png'); /* RUTA ORIGINAL RESTAURADA */
+                url('../img/dreams1.png');
             background-attachment: fixed;
         }
         .container {
@@ -98,7 +98,7 @@
             background-color: #0f172a;
             background:
                 linear-gradient(rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95)),
-                url('img/dreams1.png'); /* RUTA ORIGINAL RESTAURADA */
+                url('../img/dreams1.png');
             background-attachment: fixed;
         }
         .dark .card { background-color: #1e293b; border: 1px solid #334155; }
@@ -217,7 +217,7 @@
         </div>
         
         <a href="../index.html" class="flex-shrink-0 block transition-transform duration-200 hover:scale-105">
-            <img src="../img/dreams1.png" <!-- RUTA ORIGINAL RESTAURADA -->
+            <img src="../img/dreams1.png" 
                  alt="Logo del Casino y enlace a Planilla" 
                  class="w-32 h-auto rounded-lg shadow-lg"
                  onerror="this.onerror=null;this.src='https://placehold.co/120x90/1e293b/f1f5f9?text=LOGO';">
@@ -260,7 +260,6 @@
     <footer class="container mt-auto pt-8 text-center text-gray-500 text-sm"><p>CarlosPN Interactive®</p></footer>
 
     <script>
-        // --- El código completo se pega aquí ---
         const TOURNAMENTS = {
             ruleta: { name: 'Torneo de Ruleta', type: 'roulette', finalistsCount: 5 },
             draw_poker: { name: 'Torneo de Draw Poker', rounds: ['Puntaje'], type: 'cards', finalistsCount: 6 },
@@ -297,17 +296,14 @@
                         const chipEl = document.createElement('div');
                         chipEl.className = 'chip';
                         
-                        // LÓGICA CORREGIDA Y FINAL
                         if (chip.image && chip.image.trim() !== '') {
-                            // Construye la ruta relativa correcta: ../ para subir un nivel, luego entra a /fichas/
                             chipEl.style.backgroundImage = `url('../fichas/${chip.image}')`;
                         }
-                        chipEl.style.backgroundColor = chip.color; // Color de respaldo
+                        chipEl.style.backgroundColor = chip.color;
                         
                         const formattedValue = formatNumber(chip.value);
                         chipEl.textContent = formattedValue;
                         
-                        // Ajusta el tamaño de la fuente
                         const len = formattedValue.length;
                         if (len <= 4) { chipEl.style.fontSize = '1.1rem'; } 
                         else if (len <= 6) { chipEl.style.fontSize = '0.9rem'; } 
