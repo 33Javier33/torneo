@@ -129,8 +129,9 @@
             <div class="border-t pt-4 mt-4">
                 <h3 class="text-xl font-bold mb-4 text-blue-900">Guardar / Cargar / Reiniciar</h3>
                 <div class="flex flex-wrap gap-4 justify-start">
-                    <button onclick="saveTournamentToFile()" class="bg-teal-600 text-white px-6 py-2 rounded-md font-bold hover:bg-teal-700 transition-colors">Guardar (JSON)</button>
-                    <button onclick="document.getElementById('loadTournamentInput').click()" class="bg-purple-600 text-white px-6 py-2 rounded-md font-bold hover:bg-purple-700 transition-colors">Cargar (JSON)</button>
+                    <button onclick="saveTournamentToFile()" class="bg-teal-600 text-white px-6 py-2 rounded-md font-bold hover:bg-teal-700 transition-colors">Guardar Torneo</button>
+                    <button onclick="saveBaseToFile()" class="bg-blue-600 text-white px-6 py-2 rounded-md font-bold hover:bg-blue-700 transition-colors">Guardar Base</button>
+                    <button onclick="document.getElementById('loadTournamentInput').click()" class="bg-purple-600 text-white px-6 py-2 rounded-md font-bold hover:bg-purple-700 transition-colors">Cargar Torneo</button>
                     <input type="file" id="loadTournamentInput" class="hidden" accept=".json" onchange="loadTournamentFromFile(event)">
                     <button onclick="hardReset()" class="bg-orange-600 text-white px-6 py-2 rounded-md font-bold hover:bg-orange-700">Reinicio Forzado</button>
                 </div>
@@ -299,14 +300,11 @@
             const playersMap = new Map();
             const actualEntries = allEntries.filter(entry => !entry.isTableBreak);
             actualEntries.forEach(entry => {
-                if (!playersMap.has(entry.rut)) playersMap.set(entry.rut, []);
-                playersMap.get(entry.rut).push(entry);
+                if (!playersMap.has(entry.rut) || calculateTotal(entry, tournamentType) > calculateTotal(playersMap.get(entry.rut), tournamentType)) {
+                    playersMap.set(entry.rut, entry);
+                }
             });
-            const bestEntries = [];
-            for (const [rut, entries] of playersMap.entries()) {
-                bestEntries.push(entries.sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType))[0]);
-            }
-            return bestEntries;
+            return Array.from(playersMap.values());
         }
         
         function sendFullscreenCommand() {
@@ -665,10 +663,12 @@
             }
         }
         
+        // --- MODIFICADO ---
         function updateChipImage(index, filename) {
             let chips = getChips();
             if (chips[index]) {
-                chips[index].image = filename.trim() ? `fichas/${filename.trim()}` : '';
+                // Añade una barra al principio para crear una ruta absoluta desde la raíz del sitio.
+                chips[index].image = filename.trim() ? `/fichas/${filename.trim()}` : '';
                 saveChips(chips);
                 showToast("Imagen de ficha actualizada.", true);
             }
@@ -850,6 +850,18 @@
             showToast("PDF generado correctamente.", true);
         }
 
+        function saveBaseToFile() {
+            const dataToSave = getClientesBase();
+            const dataStr = JSON.stringify(dataToSave, null, 2);
+            const blob = new Blob([dataStr], {type: "application/json"});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `base_clientes.json`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast("Base de datos de clientes guardada.", true);
+        }
+
         function saveTournamentToFile() {
             const tournamentType = document.getElementById('tournamentSelector').value;
             const dataToSave = {
@@ -889,14 +901,12 @@
                     return;
                 }
                 
-                let participants = data.clients || data.participants; // Retrocompatibilidad por nombre de campo
+                let participants = data.clients || data.participants;
                 if (!data.tournamentType || !participants || !Array.isArray(participants)) {
                     showToast("Error de validación: Archivo no es un torneo válido.");
                     return;
                 }
 
-                // --- CORRECCIÓN: MIGRACIÓN DE DATOS ANTIGUOS ---
-                // Para compatibilidad con archivos JSON guardados antes del cambio de terminología de cupones.
                 const migrateData = (player) => {
                     if (player.hasOwnProperty('cuponTorneo')) {
                         player.cuponSorteo = player.cuponTorneo;
