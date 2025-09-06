@@ -20,7 +20,7 @@
             background-color: #f0f4f8;
             background: 
                 linear-gradient(rgba(240, 244, 248, 0.9), rgba(240, 244, 248, 0.9)),
-                url('img/dreams1.png');
+                url('../img/dreams1.png');
             background-attachment: fixed;
         }
         .container {
@@ -98,7 +98,7 @@
             background-color: #0f172a;
             background:
                 linear-gradient(rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95)),
-                url('img/dreams1.png');
+                url('../img/dreams1.png');
             background-attachment: fixed;
         }
         .dark .card { background-color: #1e293b; border: 1px solid #334155; }
@@ -282,7 +282,7 @@
             const tournament = TOURNAMENTS[tournamentType];
             const chipCard = document.getElementById('chip-card');
             const rack = document.getElementById('chip-rack');
-            if (tournament.type !== 'cards') {
+            if (!tournament || tournament.type !== 'cards') {
                 chipCard.classList.add('hidden');
             } else {
                 chipCard.classList.remove('hidden');
@@ -291,34 +291,33 @@
                 
                 if (chips.length === 0) {
                     rack.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">No hay fichas definidas.</p>`;
-                    return;
-                }
-                
-                chips.forEach(chip => {
-                    const chipEl = document.createElement('div');
-                    chipEl.className = 'chip';
-                    
-                    if (chip.image && chip.image.trim() !== '') {
-                        chipEl.style.backgroundImage = `url('../fichas/${chip.image}')`;
-                    }
-                    chipEl.style.backgroundColor = chip.color;
-                    
-                    const formattedValue = formatNumber(chip.value);
-                    chipEl.textContent = formattedValue;
-                    
-                    const len = formattedValue.length;
-                    if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
-                    else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
-                    else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
-                    else { chipEl.style.fontSize = '0.5rem'; }
+                } else {
+                    chips.forEach(chip => {
+                        const chipEl = document.createElement('div');
+                        chipEl.className = 'chip';
+                        
+                        if (chip.image && chip.image.trim() !== '') {
+                            chipEl.style.backgroundImage = `url('../fichas/${chip.image}')`;
+                        }
+                        chipEl.style.backgroundColor = chip.color;
+                        
+                        const formattedValue = formatNumber(chip.value);
+                        chipEl.textContent = formattedValue;
+                        
+                        const len = formattedValue.length;
+                        if (len <= 4) { chipEl.style.fontSize = '0.9rem'; } 
+                        else if (len <= 6) { chipEl.style.fontSize = '0.75rem'; } 
+                        else if (len <= 8) { chipEl.style.fontSize = '0.6rem'; } 
+                        else { chipEl.style.fontSize = '0.5rem'; }
 
-                    rack.appendChild(chipEl);
-                });
+                        rack.appendChild(chipEl);
+                    });
+                }
             }
             updateTopCardsLayout();
         }
 
-        // --- El resto del código JS completo va aquí ---
+        // --- El resto del JS completo para que funcione todo ---
         function goFullscreen() {
             const elem = document.documentElement;
             if (elem.requestFullscreen) { elem.requestFullscreen(); } 
