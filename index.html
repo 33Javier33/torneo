@@ -376,7 +376,7 @@
 
                 if (playersInCurrentTable === 0) {
                     const mesaRow = tableBody.insertRow();
-                    mesaRow.className = 'bg-sky-200 font-bold text-sky-800';
+                    mesaRow.className = 'bg-sky-200 font-bold text-sky-800 table-header-row';
                     const titleCell = mesaRow.insertCell();
                     titleCell.colSpan = totalColSpan;
                     titleCell.className = 'p-2 text-left pl-4';
@@ -472,14 +472,37 @@
             const apellido = document.getElementById('addApellido').value.trim();
             const rutInput = document.getElementById('addRut').value.trim();
             const tipoCupon = document.getElementById('addTipoCupon').value;
+
+            const clearAddFormAfterError = () => {
+                document.getElementById('addNombre').value = '';
+                document.getElementById('addApellido').value = '';
+                document.getElementById('addRut').value = '';
+                selectedClientRut = null;
+            };
+
             if (!nombre || !apellido) { showToast("Nombre y Apellido son obligatorios."); return; }
             const finalRut = selectedClientRut || rutInput;
             if (!finalRut) { showToast("El RUT es obligatorio."); return; }
+            
             const clientsTorneo = getClientesTorneo(tournamentType);
             const existingEntries = clientsTorneo.filter(c => c.rut === finalRut && !c.isTableBreak);
-            if (existingEntries.length >= 2) { showToast(`${nombre} ${apellido} ya utilizó sus 2 entradas.`); return; }
-            if (tipoCupon === 'sorteo' && existingEntries.some(e => e.cuponSorteo)) { showToast('Este participante ya utilizó el Cupón Sorteo.'); return; }
-            if (tipoCupon === 'canje' && existingEntries.some(e => e.ticketCanje)) { showToast('Este participante ya utilizó el Ticket Canje.'); return; }
+
+            if (existingEntries.length >= 2) { 
+                showToast(`${nombre} ${apellido} ya utilizó sus 2 entradas.`, false); 
+                clearAddFormAfterError();
+                return; 
+            }
+            if (tipoCupon === 'sorteo' && existingEntries.some(e => e.cuponSorteo)) { 
+                showToast('Este participante ya utilizó el Cupón Sorteo (CS).', false); 
+                clearAddFormAfterError();
+                return; 
+            }
+            if (tipoCupon === 'canje' && existingEntries.some(e => e.ticketCanje)) { 
+                showToast('Este participante ya utilizó el Ticket Canje (TC).', false); 
+                clearAddFormAfterError();
+                return; 
+            }
+
             const clientesBase = getClientesBase();
             if (!clientesBase.some(c => c.rut === finalRut)) {
                 clientesBase.push({ nombre, apellido, rut: finalRut });
@@ -574,6 +597,7 @@
                         chips[chipColorPickerTarget.index].color = color;
                         saveChips(chips);
                         renderChipConfig();
+                        showToast("Color de ficha actualizado.", true);
                     }
                     closeColorModal();
                 };
@@ -621,6 +645,7 @@
             chips.push({ value: '1000', color: '#6D4C41', image: '' });
             saveChips(chips);
             renderChipConfig();
+            showToast("Ficha añadida.", true);
         }
 
         function removeChip(index) {
@@ -628,6 +653,7 @@
             chips.splice(index, 1);
             saveChips(chips);
             renderChipConfig();
+            showToast("Ficha eliminada.", true);
         }
 
         function updateChipValue(index, value) {
@@ -635,6 +661,7 @@
             if (chips[index]) {
                 chips[index].value = value.replace(/\./g, '');
                 saveChips(chips);
+                showToast("Valor de ficha actualizado.", true);
             }
         }
         
@@ -643,6 +670,7 @@
             if (chips[index]) {
                 chips[index].image = filename.trim() ? `fichas/${filename.trim()}` : '';
                 saveChips(chips);
+                showToast("Imagen de ficha actualizada.", true);
             }
         }
 
@@ -754,7 +782,6 @@
             const totalCS = new Set(allEntries.filter(c => c.cuponSorteo).map(c => c.rut)).size;
             const totalTC = new Set(allEntries.filter(c => c.ticketCanje).map(c => c.rut)).size;
 
-            // --- Dibujar Cabecera del Documento ---
             drawText(tournament.name, 50, 24, true); y -= 20;
             drawText(`Fecha: ${date} | Encargado: ${director}`, 50, 12); y -= 20;
             drawText(`Jugadores Únicos: ${totalPlayers} | Cupones Sorteo (CS): ${totalCS} | Tickets Canje (TC): ${totalTC}`, 50, 12); y -= 15;
@@ -762,16 +789,13 @@
             y -= 30;
 
             if (options.isFinalReport) {
-                // --- ACTA DE GANADORES ---
                 drawText('Acta de Entrega de Premios', 50, 18, true); y -= 30;
-
                 const finalists = getFinalists(tournamentType);
                 const sortedFinalists = [...finalists].sort((a, b) => calculateTotal(b, tournamentType) - calculateTotal(a, tournamentType));
                 const prizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
                 const prizeConfig = [
                     { prize: prizes.first || 0, label: '1er Lugar' }, { prize: prizes.second || 0, label: '2do Lugar' }, { prize: prizes.third || 0, label: '3er Lugar' }
                 ];
-                
                 prizeConfig.forEach((p, i) => {
                     if (sortedFinalists[i]) {
                         const winner = sortedFinalists[i];
@@ -784,18 +808,13 @@
                         y -= 50;
                     }
                 });
-
             } else {
-                // --- INFORME DE CLASIFICACIÓN Y FINALISTAS ---
                 drawText('Informe de Clasificación', 50, 18, true); y -= 30;
-                
-                // Headers de la tabla
                 drawText('RUT', 50, 10, true); drawText('Nombre y Apellido', 130, 10, true);
                 drawText('Tipo', 350, 10, true); drawText('Puntaje', 450, 10, true);
                 y -= 5;
                 page.drawLine({ start: { x: 50, y }, end: { x: width - 50, y: y }, thickness: 0.5 });
                 y -= 15;
-                
                 bestEntries.forEach(client => {
                     if (y < 40) { page = pdfDoc.addPage(); y = height - 40; }
                     drawText(formatRutForPDF(client.rut), 50, 10);
@@ -804,7 +823,6 @@
                     drawText(calculateTotal(client, tournamentType).toLocaleString('es-CL'), 450, 10);
                     y -= 15;
                 });
-
                 const finalists = getFinalists(tournamentType);
                 if (finalists.length > 0) {
                     y -= 20;
@@ -814,7 +832,6 @@
                     y -= 5;
                     page.drawLine({ start: { x: 50, y }, end: { x: width - 50, y: y }, thickness: 0.5 });
                     y -= 15;
-
                     finalists.forEach(finalist => {
                         if (y < 40) { page = pdfDoc.addPage(); y = height - 40; }
                         drawText(formatRutForPDF(finalist.rut), 50, 10);
@@ -825,7 +842,6 @@
                 }
             }
 
-            // --- Guardar y descargar el PDF ---
             const pdfBytes = await pdfDoc.save();
             const fileName = options.isFinalReport 
                 ? `Acta_Ganadores_${tournamentType}_${date}.pdf` 
@@ -833,7 +849,6 @@
             download(pdfBytes, fileName, "application/pdf");
             showToast("PDF generado correctamente.", true);
         }
-
 
         function saveTournamentToFile() {
             const tournamentType = document.getElementById('tournamentSelector').value;
@@ -873,18 +888,33 @@
                     showToast("Error crítico: El archivo no es un JSON válido.");
                     return;
                 }
-
-                const participants = data.clients || data.participants; // Retrocompatibilidad
+                
+                let participants = data.clients || data.participants; // Retrocompatibilidad por nombre de campo
                 if (!data.tournamentType || !participants || !Array.isArray(participants)) {
                     showToast("Error de validación: Archivo no es un torneo válido.");
                     return;
                 }
 
+                // --- CORRECCIÓN: MIGRACIÓN DE DATOS ANTIGUOS ---
+                // Para compatibilidad con archivos JSON guardados antes del cambio de terminología de cupones.
+                const migrateData = (player) => {
+                    if (player.hasOwnProperty('cuponTorneo')) {
+                        player.cuponSorteo = player.cuponTorneo;
+                        delete player.cuponTorneo;
+                    }
+                    if (player.hasOwnProperty('cuponCanjeo')) {
+                        player.ticketCanje = player.cuponCanjeo;
+                        delete player.cuponCanjeo;
+                    }
+                    return player;
+                };
+                participants = participants.map(migrateData);
+                let finalists = (data.finalists || []).map(migrateData);
+
                 try {
                     const tournamentType = data.tournamentType;
                     const prizes = data.prizes || {};
                     const limits = data.limits || {};
-                    
                     document.getElementById('tournamentSelector').value = tournamentType;
                     localStorage.setItem('selectedTournament', tournamentType);
                     document.getElementById('tournamentDate').value = data.date;
@@ -899,20 +929,16 @@
                     document.getElementById('firstPrize').value = formatNumberForDisplay(prizes.first);
                     document.getElementById('secondPrize').value = formatNumberForDisplay(prizes.second);
                     document.getElementById('thirdPrize').value = formatNumberForDisplay(prizes.third);
-                    
                     localStorage.setItem('gameLimits', JSON.stringify(limits));
                     document.getElementById('minBetInput').value = formatNumberForDisplay(limits.minBet);
                     document.getElementById('maxBetInput').value = formatNumberForDisplay(limits.maxBet);
                     document.getElementById('minPlenoInput').value = formatNumberForDisplay(limits.minPleno);
                     document.getElementById('maxPlenoInput').value = formatNumberForDisplay(limits.maxPleno);
-                    
                     document.getElementById('rouletteBallCount').value = data.rouletteBallCount || '3';
                     localStorage.setItem('rouletteBallCount', data.rouletteBallCount || '3');
-
                     saveChips(data.chips || []);
                     saveClientesTorneo(tournamentType, participants);
-                    saveFinalists(tournamentType, data.finalists || []);
-                    
+                    saveFinalists(tournamentType, finalists);
                     showToast("Torneo cargado correctamente.", true);
                     closeConfigModal();
                     changeTournament();
@@ -959,20 +985,18 @@
             sortableInstance = new Sortable(tableBody, {
                 multiDrag: true, 
                 selectedClass: 'selected', 
-                filter: '.not-draggable, .table-break-row',
+                filter: '.not-draggable, .table-break-row, .table-header-row',
                 animation: 150,
                 onEnd: () => {
                     const tournamentType = document.getElementById('tournamentSelector').value;
                     let originalClients = getClientesTorneo(tournamentType);
                     let newOrder = [];
                     const clientMap = new Map(originalClients.filter(c => !c.isTableBreak).map(c => [c.id, c]));
-
                     Array.from(tableBody.children).forEach(row => {
                         if (row.dataset.id && clientMap.has(row.dataset.id)) {
                             newOrder.push(clientMap.get(row.dataset.id));
                         }
                     });
-
                     let finalClientList = [];
                     let playerIndex = 0;
                     originalClients.forEach(client => {
@@ -985,7 +1009,6 @@
                             }
                         }
                     });
-                    
                     saveClientesTorneo(tournamentType, finalClientList);
                     selectedIndices = [];
                     renderClients(tournamentType);
@@ -1005,8 +1028,12 @@
             } else {
                 document.getElementById('mainDateDisplay').textContent = 'Fecha no definida';
             }
+            showToast("Fecha guardada.", true);
         }
-        function saveDirectorName() { localStorage.setItem('tournamentDirector', document.getElementById('tournamentDirector').value); }
+        function saveDirectorName() { 
+            localStorage.setItem('tournamentDirector', document.getElementById('tournamentDirector').value);
+            showToast("Nombre del encargado guardado.", true);
+        }
         function formatRut(input) {
             let rut = input.value.replace(/[^\dkK]/g, '').replace(/^0+/, '');
             if (rut.length > 1) {
@@ -1016,16 +1043,24 @@
             } else { input.value = rut; }
         }
         function formatNumericInput(input) { input.value = formatNumberForDisplay(input.value); }
-        function savePrizePool() { localStorage.setItem('prizePool', document.getElementById('prizePoolInput').value.replace(/\./g, '') || '0'); }
+        function savePrizePool() { 
+            localStorage.setItem('prizePool', document.getElementById('prizePoolInput').value.replace(/\./g, '') || '0');
+            showToast("Pozo total guardado.", true);
+        }
         function savePrizes() {
             const prizes = { first: document.getElementById('firstPrize').value.replace(/\./g, '') || '0', second: document.getElementById('secondPrize').value.replace(/\./g, '') || '0', third: document.getElementById('thirdPrize').value.replace(/\./g, '') || '0' };
             localStorage.setItem('tournamentPrizes', JSON.stringify(prizes));
+            showToast("Premios guardados.", true);
         }
-        function saveEndTime() { localStorage.setItem('registrationEndTime', document.getElementById('registrationEndTime').value); }
+        function saveEndTime() { 
+            localStorage.setItem('registrationEndTime', document.getElementById('registrationEndTime').value);
+            showToast("Hora de cierre guardada.", true);
+        }
         function saveRouletteConfig() {
             localStorage.setItem('rouletteBallCount', document.getElementById('rouletteBallCount').value);
             renderClients(document.getElementById('tournamentSelector').value);
             initializeSortable();
+            showToast("Configuración de ruleta guardada.", true);
         }
         function saveGameLimits() {
             const limits = {
@@ -1035,24 +1070,28 @@
                 maxPleno: document.getElementById('maxPlenoInput').value.replace(/\./g, '')
             };
             localStorage.setItem('gameLimits', JSON.stringify(limits));
+            showToast("Límites del juego guardados.", true);
         }
 
         function changeTournament() {
             const tournamentType = document.getElementById('tournamentSelector').value;
             const tournament = TOURNAMENTS[tournamentType];
             localStorage.setItem('selectedTournament', tournamentType);
-            
             document.getElementById('mainTournamentTitle').textContent = tournament.name;
-            
             const pokerBlackjackConfig = document.getElementById('pokerBlackjackConfig');
             const rouletteLimitsConfig = document.getElementById('rouletteLimitsConfig');
-            
             pokerBlackjackConfig.classList.toggle('hidden', tournament.type !== 'cards');
             rouletteLimitsConfig.classList.toggle('hidden', tournament.type !== 'roulette');
-
             document.getElementById('rouletteConfig').classList.toggle('hidden', tournament.type !== 'roulette');
             document.getElementById('chipConfigSection').classList.toggle('hidden', tournament.type !== 'cards');
-            saveDateToLocalStorage();
+            
+            const dateStr = document.getElementById('tournamentDate').value;
+            if (dateStr) {
+                const [year, month, day] = dateStr.split('-');
+                document.getElementById('mainDateDisplay').textContent = `Fecha del Torneo: ${day}/${month}/${year}`;
+            } else {
+                document.getElementById('mainDateDisplay').textContent = 'Fecha no definida';
+            }
             selectedIndices = []; 
             showClassificationView();
             renderClients(tournamentType); 
@@ -1092,27 +1131,22 @@
         document.addEventListener('DOMContentLoaded', () => {
             const savedThemeCommand = JSON.parse(localStorage.getItem('theme_command') || '{}');
             document.getElementById('themeSwitch').checked = savedThemeCommand.theme === 'dark';
-
             const selector = document.getElementById('tournamentSelector');
             Object.keys(TOURNAMENTS).forEach(key => selector.add(new Option(TOURNAMENTS[key].name, key)));
             selector.value = localStorage.getItem('selectedTournament') || 'ruleta';
-            
             document.getElementById('tournamentDate').value = localStorage.getItem('tournamentDate') || new Date().toISOString().split('T')[0];
             document.getElementById('tournamentDirector').value = localStorage.getItem('tournamentDirector') || '';
-            
             const prizePoolInput = document.getElementById('prizePoolInput');
             prizePoolInput.value = formatNumberForDisplay(localStorage.getItem('prizePool'));
             const savedPrizes = JSON.parse(localStorage.getItem('tournamentPrizes') || '{}');
             document.getElementById('firstPrize').value = formatNumberForDisplay(savedPrizes.first);
             document.getElementById('secondPrize').value = formatNumberForDisplay(savedPrizes.second);
             document.getElementById('thirdPrize').value = formatNumberForDisplay(savedPrizes.third);
-
             const savedLimits = getGameLimits();
             document.getElementById('minBetInput').value = formatNumberForDisplay(savedLimits.minBet);
             document.getElementById('maxBetInput').value = formatNumberForDisplay(savedLimits.maxBet);
             document.getElementById('minPlenoInput').value = formatNumberForDisplay(savedLimits.minPleno);
             document.getElementById('maxPlenoInput').value = formatNumberForDisplay(savedLimits.maxPleno);
-
             document.getElementById('registrationEndTime').value = localStorage.getItem('registrationEndTime') || '';
             document.getElementById('rouletteBallCount').value = localStorage.getItem('rouletteBallCount') || '3';
             localStorage.setItem('tournament_view_state', 'classification');
