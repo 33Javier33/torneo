@@ -231,12 +231,10 @@
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzgS7g3_yAEZA_56BtVqJ6-RRt1f_o8wMfdjzGVuLKzXvLH8Z-KiJP4E1SQLoE-edRdJw/exec';
     let clientesSheetCache = null; // Caché para no llamar a Sheets a cada rato.
 
-    // Función genérica para comunicarse con el Script de Google
     async function fetchFromSheet(action, data = {}) {
         const method = (action === 'getClients') ? 'GET' : 'POST';
         let url = SCRIPT_URL;
         const options = { method, redirect: 'follow', cache: 'no-cache' };
-
         if (method === 'GET') {
             url += `?action=${action}&nocache=${new Date().getTime()}`;
         } else {
@@ -245,7 +243,6 @@
             body.append('data', JSON.stringify(data));
             options.body = body;
         }
-
         try {
             const response = await fetch(url, options);
             if (!response.ok) throw new Error(`Error de red: ${response.statusText}`);
@@ -259,109 +256,64 @@
         }
     }
 
-    // Obtiene los clientes desde Sheets y los guarda en la caché.
     async function getClientesFromSheet() {
-        if (clientesSheetCache !== null) {
-            return clientesSheetCache;
-        }
+        if (clientesSheetCache !== null) return clientesSheetCache;
         showToast("Sincronizando base de datos...", true, 1000);
         const data = await fetchFromSheet('getClients');
         if (data) {
             clientesSheetCache = data;
             return data;
         }
-        return []; // Si falla, devuelve un array vacío.
+        return [];
     }
 
-    // Añade UN cliente nuevo a la hoja de cálculo de Sheets.
     async function addClientToSheet(newClient) {
         showToast("Guardando nuevo cliente en base de datos...", true, 1500);
         const result = await fetchFromSheet('addClient', newClient);
         if (result) {
             showToast("Cliente guardado en la base de datos.", true);
-            clientesSheetCache = null; // Invalida la caché para que la próxima búsqueda lo encuentre.
+            clientesSheetCache = null;
             return true;
         }
         showToast("Error al guardar cliente en la base de datos.");
         return false;
     }
 
-
     // --- 2. LÓGICA DE LA APLICACIÓN (MODIFICADA PARA USAR SHEETS) ---
-
-    // La función para añadir participantes AHORA USA LA LÓGICA DE SHEETS
     async function addClientToTournament() {
         const addButton = document.getElementById("addButton");
         addButton.disabled = true;
         addButton.textContent = "Añadiendo...";
-
         try {
             const tournamentId = document.getElementById("tournamentSelector").value;
             const nombre = document.getElementById("addNombre").value.trim();
             const apellido = document.getElementById("addApellido").value.trim();
             const rutInput = document.getElementById("addRut").value.trim();
             const tipoCupon = document.getElementById("addTipoCupon").value;
-
-            if (!nombre || !apellido) {
-                showToast("Nombre y Apellido son obligatorios.");
-                return;
-            }
-            
+            if (!nombre || !apellido) { showToast("Nombre y Apellido son obligatorios."); return; }
             const rut = selectedClientRut || rutInput;
-            if (!rut) {
-                showToast("El RUT es obligatorio.");
-                return;
-            }
-            
-            // Lógica del torneo (sigue usando localStorage, como pediste)
+            if (!rut) { showToast("El RUT es obligatorio."); return; }
             const clientesTorneo = getClientesTorneo(tournamentId);
             const entries = clientesTorneo.filter(c => c.rut === rut && !c.isTableBreak);
-            if (entries.length >= 2) {
-                showToast(`${nombre} ${apellido} ya utilizó sus 2 entradas.`);
-                return;
-            }
-            if (tipoCupon === 'sorteo' && entries.some(c => c.cuponSorteo)) {
-                showToast("Este participante ya utilizó el Cupón Sorteo (CS).");
-                return;
-            }
-            if (tipoCupon === 'canje' && entries.some(c => c.ticketCanje)) {
-                showToast("Este participante ya utilizó el Ticket Canje (TC).");
-                return;
-            }
-
-            // --- LÓGICA DE INTEGRACIÓN CON SHEETS ---
-            // Si el cliente no fue encontrado en la búsqueda (es nuevo)
+            if (entries.length >= 2) { showToast(`${nombre} ${apellido} ya utilizó sus 2 entradas.`); return; }
+            if (tipoCupon === 'sorteo' && entries.some(c => c.cuponSorteo)) { showToast("Este participante ya utilizó el Cupón Sorteo (CS)."); return; }
+            if (tipoCupon === 'canje' && entries.some(c => c.ticketCanje)) { showToast("Este participante ya utilizó el Ticket Canje (TC)."); return; }
             if (!selectedClientRut) {
                 const clientesBase = await getClientesFromSheet();
-                // Comprueba si realmente no existe en la base de datos central
                 if (!clientesBase.some(c => c.rut === rut)) {
                     const newClientData = { nombre, apellido, rut };
-                    // Lo añade a Google Sheets
                     const success = await addClientToSheet(newClientData);
-                    if (!success) { // Si falla al guardar en Sheets, no continúa
-                        showToast("No se pudo agregar al participante. Falla al guardar en BD.");
-                        return;
-                    }
+                    if (!success) { showToast("No se pudo agregar al participante. Falla al guardar en BD."); return; }
                 }
             }
-            
-            // Si todo está bien, lo añade a la planilla del TORNEO (localStorage)
-            const newEntry = {
-                id: Date.now() + "-" + Math.random().toString(36).substring(2, 9),
-                nombre, apellido, rut, color: PREDEFINED_COLORS[0],
-                cuponSorteo: tipoCupon === 'sorteo',
-                ticketCanje: tipoCupon === 'canje'
-            };
+            const newEntry = { id: Date.now() + "-" + Math.random().toString(36).substring(2, 9), nombre, apellido, rut, color: PREDEFINED_COLORS[0], cuponSorteo: tipoCupon === 'sorteo', ticketCanje: tipoCupon === 'canje' };
             getTournamentRounds(tournamentId).forEach(r => newEntry[r.toLowerCase().replace(/ /g, "")] = "");
-            
             clientesTorneo.push(newEntry);
             saveClientesTorneo(tournamentId, clientesTorneo);
-            renderClients(tournamentId); // Dibuja la tabla desde localStorage
+            renderClients(tournamentId);
             initializeSortable();
             showToast(`Participante añadido: ${nombre} ${apellido}`, true);
-
         } finally {
-            // Limpia los campos
             document.getElementById("addNombre").value = "";
             document.getElementById("addApellido").value = "";
             document.getElementById("addRut").value = "";
@@ -374,19 +326,8 @@
         }
     }
 
-
-    // --- 3. RESTO DEL CÓDIGO (SIN CAMBIOS IMPORTANTES) ---
-    // El resto de tu código que maneja la lógica de la planilla, los torneos,
-    // el PDF, etc., se mantiene igual, ya que funciona con localStorage.
-
-    const TOURNAMENTS = {
-        ruleta: { name: 'Torneo de Ruleta', playersPerTable: 5, type: 'roulette' },
-        draw_poker: { name: 'Torneo de Draw Poker', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' },
-        blackjack: { name: 'Torneo de Blackjack', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' },
-        ruleta_vip: { name: 'Torneo de Ruleta VIP', playersPerTable: 5, type: 'roulette' },
-        draw_poker_vip: { name: 'Torneo de Draw Poker VIP', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' },
-        blackjack_vip: { name: 'Torneo de Blackjack VIP', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }
-    };
+    // --- 3. RESTO DEL CÓDIGO ---
+    const TOURNAMENTS = { ruleta: { name: 'Torneo de Ruleta', playersPerTable: 5, type: 'roulette' }, draw_poker: { name: 'Torneo de Draw Poker', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }, blackjack: { name: 'Torneo de Blackjack', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }, ruleta_vip: { name: 'Torneo de Ruleta VIP', playersPerTable: 5, type: 'roulette' }, draw_poker_vip: { name: 'Torneo de Draw Poker VIP', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }, blackjack_vip: { name: 'Torneo de Blackjack VIP', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' } };
     const PREDEFINED_COLORS = ['#E53935', '#D81B60', '#8E24AA', '#1E88E5', '#00897B', '#43A047', '#FDD835', '#FB8C00', '#6D4C41', '#455A64', '#FFFFFF', '#000000'];
     let selectedIndices = [], sortableInstance = null, chipColorPickerTarget = null;
     function getTournamentRounds(e){const t=TOURNAMENTS[e];if(!t)return[];if("roulette"===t.type){const e=parseInt(localStorage.getItem("rouletteBallCount")||"3");return Array.from({length:e},(e,t)=>`Bolita ${t+1}`)}return t.rounds||[]}
@@ -414,12 +355,7 @@
     function saveClientChanges(){const e=document.getElementById("editIndex").value,t=document.getElementById("editTipoCupon").value,o=document.getElementById("tournamentSelector").value;let n=getClientesTorneo(o);n[e]&&!n[e].isTableBreak&&(n[e].cuponSorteo="sorteo"===t,n[e].ticketCanje="canje"===t,saveClientesTorneo(o,n),renderClients(o),initializeSortable(),closeEditModal(),showToast("Cambios guardados.",!0))}
     function openColorModal(e,t){chipColorPickerTarget={index:e,type:t};const o=document.getElementById("colorModalPalette");o.innerHTML="",PREDEFINED_COLORS.forEach(t=>{const n=document.createElement("span");n.className="color-swatch",n.style.backgroundColor=t,n.style.width="40px",n.style.height="40px",n.onclick=()=>{if("player"===chipColorPickerTarget.type)updateClientColor(chipColorPickerTarget.index,t);else if("chip"===chipColorPickerTarget.type){let o=getChips();o[chipColorPickerTarget.index].color=t,saveChips(o),renderChipConfig(),showToast("Color de ficha actualizado.",!0)}closeColorModal()},o.appendChild(n)}),document.getElementById("colorModal").style.display="flex"}
     function closeColorModal(){document.getElementById("colorModal").style.display="none",chipColorPickerTarget=null}
-    async function showRutModal(rut) {
-        const clientes = await getClientesFromSheet(); // Usa la base de datos de Sheets
-        const client = clientes.find(t => t.rut === rut);
-        document.getElementById("rutModal").querySelector("#modalContent").innerHTML = `<span class="close-btn" onclick="closeRutModal()">&times;</span><h2 class="text-xl font-bold mb-4">Datos de Cliente</h2><p><span class="font-bold">Nombre:</span> ${client ? `${client.nombre} ${client.apellido}` : "N/A"}</p><p><span class="font-bold">RUT:</span> ${rut || "No definido"}</p>`;
-        document.getElementById("rutModal").style.display="flex";
-    }
+    async function showRutModal(rut) { const clientes = await getClientesFromSheet(); const client = clientes.find(t => t.rut === rut); document.getElementById("rutModal").querySelector("#modalContent").innerHTML = `<span class="close-btn" onclick="closeRutModal()">&times;</span><h2 class="text-xl font-bold mb-4">Datos de Cliente</h2><p><span class="font-bold">Nombre:</span> ${client ? `${client.nombre} ${client.apellido}` : "N/A"}</p><p><span class="font-bold">RUT:</span> ${rut || "No definido"}</p>`; document.getElementById("rutModal").style.display="flex"; }
     function closeRutModal(){document.getElementById("rutModal").style.display="none"}
     function openConfigModal(){renderChipConfig(),document.getElementById("configModal").style.display="flex"}
     function closeConfigModal(){document.getElementById("configModal").style.display="none"}
@@ -437,15 +373,109 @@
     function renderFinalists(){const e=document.getElementById("tournamentSelector").value,t=getTournamentRounds(e),o=getFinalists(e),n=document.querySelector("#finalistTable tbody"),l=document.querySelector("#finalistTable thead");if(!n||!l)return;n.innerHTML="",l.innerHTML=`<tr><th class="p-3">Finalista</th>${t.map(e=>`<th class="p-3">${e}</th>`).join("")}<th class="p-3">Total Final</th></tr>`,o.forEach((o,l)=>{const a=n.insertRow();a.className=l%2==0?"bg-sky-50":"bg-white",a.insertCell().innerHTML=`<div class="p-2 font-semibold">${o.nombre} ${o.apellido}</div>`,t.forEach(t=>{const n=t.toLowerCase().replace(/ /g,""),i=formatNumberForDisplay(o[n]);a.insertCell().innerHTML=`<div class="p-2"><input type="tel" value="${i}" oninput="formatNumericInput(this)" onchange="updateFinalistScore(${l},'${n}',this.value)" class="score-input"></div>`}),a.insertCell().innerHTML=`<div class="p-2 text-center font-bold">${calculateTotal(o,e).toLocaleString("es-CL")}</div>`})}
     function renderWinners(){const e=JSON.parse(localStorage.getItem("tournamentPrizes")||"{}"),t=document.getElementById("tournamentSelector").value,o=getFinalists(t),n=o.sort((e,o)=>calculateTotal(o,t)-calculateTotal(e,t)),l=document.getElementById("winnersList");l.innerHTML="";const a=[{prize:e.first||0,label:"1er Lugar",color:"bg-amber-400",emoji:"🥇"},{prize:e.second||0,label:"2do Lugar",color:"bg-slate-400",emoji:"🥈"},{prize:e.third||0,label:"3er Lugar",color:"bg-amber-600",emoji:"🥉"}];a.forEach((e,t)=>{n[t]&&(l.innerHTML+=`<div class="p-4 rounded-lg shadow-lg text-white ${e.color}"><div class="flex items-center justify-between"><div><p class="text-2xl font-bold">${e.emoji} ${e.label}</p><p class="text-xl">${n[t].nombre} ${n[t].apellido}</p></div><p class="text-3xl font-extrabold">$${parseInt(e.prize).toLocaleString("es-CL")}</p></div></div>`)})}
     function updateFinalistScore(e,t,o){const n=document.getElementById("tournamentSelector").value;let l=getFinalists(n);l[e]&&(l[e][t]=o.replace(/\D/g,""),saveFinalists(n,l),renderFinalists())}
-    async function exportToPDF(e={isFinalReport:!1}){const{PDFDocument:t,rgb:o,StandardFonts:n}=PDFLib,l=await t.create(),a=await l.embedFont(n.Helvetica),r=await l.embedFont(n.HelveticaBold),i=l.addPage(),{width:s,height:d}=i.getSize();let c=d-40;const u=e=>i.drawText(e.text,{x:e.x,y:c,size:e.size,font:e.isBold?r:a,color:o(0,0,0)}),m=document.getElementById("tournamentSelector").value,g=TOURNAMENTS[m],p=localStorage.getItem("tournamentDate")||"N/A",f=localStorage.getItem("tournamentDirector")||"N/A",h=getClientesTorneo(m),b=getBestEntryPerPlayer(h,m),v=b.length,w=new Set(h.filter(e=>e.cuponSorteo).map(e=>e.rut)).size,y=new Set(h.filter(e=>e.ticketCanje).map(e=>e.rut)).size;if(u({text:g.name,x:50,size:24,isBold:!0}),c-=20,u({text:`Fecha: ${p} | Encargado: ${f}`,x:50,size:12}),c-=20,u({text:`Jugadores Únicos: ${v} | Cupones Sorteo (CS): ${w} | Tickets Canje (TC): ${y}`,x:50,size:12}),c-=15,i.drawLine({start:{x:50,y:c},end:{x:s-50,y:c},thickness:1,color:o(.8,.8,.8)}),c-=30,e.isFinalReport){u({text:"Acta de Entrega de Premios",x:50,size:18,isBold:!0}),c-=30;const e=getFinalists(m),t=[...e].sort((e,t)=>calculateTotal(t,m)-calculateTotal(e,t)),n=JSON.parse(localStorage.getItem("tournamentPrizes")||"{}"),l=[{prize:n.first||0,label:"1er Lugar"},{prize:n.second||0,label:"2do Lugar"},{prize:n.third||0,label:"3er Lugar"}];l.forEach((e,n)=>{if(t[n]){const l=t[n];u({text:e.label,x:50,size:14,isBold:!0}),c-=25,u({text:`RUT: ${(l.rut||"").replace(/[.-]/g,"")}`,x:60,size:12}),c-=20,u({text:`Nombre: ${l.nombre} ${l.apellido}`,x:60,size:12}),c-=20,u({text:`Monto a Recibir: $${parseInt(e.prize).toLocaleString("es-CL")}`,x:60,size:12}),c-=30,u({text:"Firma:",x:60,size:12}),i.drawLine({start:{x:100,y:c-2},end:{x:300,y:c-2},thickness:.5}),c-=50}})}else{u({text:"Informe de Clasificación",x:50,size:18,isBold:!0}),c-=30,u({text:"RUT",x:50,size:10,isBold:!0}),u({text:"Nombre y Apellido",x:130,size:10,isBold:!0}),u({text:"Tipo",x:350,size:10,isBold:!0}),u({text:"Puntaje",x:450,size:10,isBold:!0}),c-=5,i.drawLine({start:{x:50,y:c},end:{x:s-50,y:c},thickness:.5}),c-=15,b.forEach(e=>{c<40&&(page=l.addPage(),c=d-40),u({text:(e.rut||"").replace(/[.-]/g,""),x:50,size:10}),u({text:`${e.nombre} ${e.apellido}`,x:130,size:10}),u({text:e.cuponSorteo?"CS":e.ticketCanje?"TC":"-",x:350,size:10}),u({text:calculateTotal(e,m).toLocaleString("es-CL"),x:450,size:10}),c-=15});const e=getFinalists(m);if(e.length>0){c-=20,c<80&&(page=l.addPage(),c=d-40),u({text:"Finalistas",x:50,size:18,isBold:!0}),c-=30,u({text:"RUT",x:50,size:10,isBold:!0}),u({text:"Nombre y Apellido",x:130,size:10,isBold:!0}),u({text:"Puntaje Final",x:350,size:10,isBold:!0}),c-=5,i.drawLine({start:{x:50,y:c},end:{x:s-50,y:c},thickness:.5}),c-=15,e.forEach(e=>{c<40&&(page=l.addPage(),c=d-40),u({text:(e.rut||"").replace(/[.-]/g,""),x:50,size:10}),u({text:`${e.nombre} ${e.apellido}`,x:130,size:10}),u({text:calculateTotal(e,m).toLocaleString("es-CL"),x:350,size:10}),c-=15})}}const C=await l.save(),k=e.isFinalReport?`Acta_Ganadores_${m}_${p}.pdf`:`Informe_Clasificacion_${m}_${p}.pdf`;download(C,k,"application/pdf"),showToast("PDF generado correctamente.",!0)}
-    async function saveBaseToFile() {
-        const clientes = await getClientesFromSheet();
-        if (!clientes) return showToast("No se pudo obtener la base de datos para guardar.");
-        const dataStr = JSON.stringify(clientes, null, 2);
-        const blob = new Blob([dataStr], { type: "application/json" });
-        download(blob, 'base_clientes_sheets.json', 'application/json');
-        showToast("Base de datos de clientes (Sheets) guardada.", true);
+    
+    // --- FUNCIÓN DEL PDF MODIFICADA ---
+    async function exportToPDF(options = { isFinalReport: false }) {
+        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+        const pdfDoc = await PDFDocument.create();
+        const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        let page = pdfDoc.addPage();
+        const { width, height } = page.getSize();
+        let y = height - 40;
+
+        const drawText = (text, options) => {
+            page.drawText(text, {
+                x: options.x, y: y,
+                size: options.size,
+                font: options.isBold ? helveticaBoldFont : helveticaFont,
+                color: rgb(0, 0, 0)
+            });
+        };
+
+        const tournamentId = document.getElementById("tournamentSelector").value;
+        const tournament = TOURNAMENTS[tournamentId];
+        const tournamentDate = localStorage.getItem("tournamentDate") || "N/A";
+        const tournamentDirector = localStorage.getItem("tournamentDirector") || "N/A";
+        const allEntries = getClientesTorneo(tournamentId);
+        
+        const uniquePlayersCount = new Set(allEntries.filter(e => !e.isTableBreak).map(e => e.rut)).size;
+        const sorteoCount = new Set(allEntries.filter(e => e.cuponSorteo).map(e => e.rut)).size;
+        const canjeCount = new Set(allEntries.filter(e => e.ticketCanje).map(e => e.rut)).size;
+
+        drawText(tournament.name, { x: 50, size: 24, isBold: true }); y -= 20;
+        drawText(`Fecha: ${tournamentDate} | Encargado: ${tournamentDirector}`, { x: 50, size: 12 }); y -= 20;
+        drawText(`Jugadores Únicos: ${uniquePlayersCount} | Cupones Sorteo (CS): ${sorteoCount} | Tickets Canje (TC): ${canjeCount}`, { x: 50, size: 12 }); y -= 15;
+        page.drawLine({ start: { x: 50, y: y }, end: { x: width - 50, y: y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) }); y -= 30;
+
+        if (options.isFinalReport) {
+            // Este es el informe de GANADORES, se mantiene igual.
+            drawText("Acta de Entrega de Premios", { x: 50, size: 18, isBold: true }); y -= 30;
+            const finalists = getFinalists(tournamentId);
+            const sortedFinalists = [...finalists].sort((a, b) => calculateTotal(b, tournamentId) - calculateTotal(a, tournamentId));
+            const prizes = JSON.parse(localStorage.getItem("tournamentPrizes") || "{}");
+            const prizeDistribution = [ { prize: prizes.first || 0, label: "1er Lugar" }, { prize: prizes.second || 0, label: "2do Lugar" }, { prize: prizes.third || 0, label: "3er Lugar" } ];
+            
+            prizeDistribution.forEach((prizeInfo, index) => {
+                if (sortedFinalists[index]) {
+                    const winner = sortedFinalists[index];
+                    drawText(prizeInfo.label, { x: 50, size: 14, isBold: true }); y -= 25;
+                    drawText(`RUT: ${(winner.rut || "").replace(/[.-]/g, "")}`, { x: 60, size: 12 }); y -= 20;
+                    drawText(`Nombre: ${winner.nombre} ${winner.apellido}`, { x: 60, size: 12 }); y -= 20;
+                    drawText(`Monto a Recibir: $${parseInt(prizeInfo.prize).toLocaleString("es-CL")}`, { x: 60, size: 12 }); y -= 30;
+                    drawText("Firma:", { x: 60, size: 12 });
+                    page.drawLine({ start: { x: 100, y: y - 2 }, end: { x: 300, y: y - 2 }, thickness: .5 }); y -= 50;
+                }
+            });
+
+        } else {
+            // --- ESTE ES EL INFORME MODIFICADO ---
+            drawText("Informe de Participantes y Cupones", { x: 50, size: 18, isBold: true }); y -= 30;
+            
+            // Agrupar todas las entradas por jugador
+            const players = new Map();
+            allEntries.filter(entry => !entry.isTableBreak).forEach(entry => {
+                if (!players.has(entry.rut)) {
+                    players.set(entry.rut, { nombre: entry.nombre, apellido: entry.apellido, rut: entry.rut, entries: [] });
+                }
+                players.get(entry.rut).entries.push(entry);
+            });
+            const playerList = Array.from(players.values()).sort((a, b) => `${a.nombre} ${a.apellido}`.localeCompare(`${b.nombre} ${b.apellido}`));
+
+            // Dibujar la cabecera de la tabla
+            drawText("Nombre y Apellido", { x: 50, size: 10, isBold: true });
+            drawText("RUT", { x: 280, size: 10, isBold: true });
+            drawText("Cupones Utilizados", { x: 400, size: 10, isBold: true });
+            y -= 5;
+            page.drawLine({ start: { x: 50, y: y }, end: { x: width - 50, y: y }, thickness: .5 });
+            y -= 15;
+
+            // Dibujar cada jugador y sus cupones
+            playerList.forEach(player => {
+                if (y < 40) { // Lógica para crear una nueva página si no hay espacio
+                    page = pdfDoc.addPage();
+                    y = height - 40;
+                }
+                const couponTexts = player.entries.map(entry => {
+                    if (entry.cuponSorteo) return "CS";
+                    if (entry.ticketCanje) return "TC";
+                    return "-";
+                });
+
+                drawText(`${player.nombre} ${player.apellido}`, { x: 50, size: 10 });
+                drawText((player.rut || ""), { x: 280, size: 10 });
+                drawText(couponTexts.join(', '), { x: 400, size: 10 });
+                y -= 15;
+            });
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        const fileName = options.isFinalReport ? `Acta_Ganadores_${tournamentId}_${tournamentDate}.pdf` : `Informe_Participantes_${tournamentId}_${tournamentDate}.pdf`;
+        download(pdfBytes, fileName, "application/pdf");
+        showToast("PDF generado correctamente.", true);
     }
+    
+    async function saveBaseToFile() { const clientes = await getClientesFromSheet(); if (!clientes) return showToast("No se pudo obtener la base de datos para guardar."); const dataStr = JSON.stringify(clientes, null, 2); const blob = new Blob([dataStr], { type: "application/json" }); download(blob, 'base_clientes_sheets.json', 'application/json'); showToast("Base de datos de clientes (Sheets) guardada.", true); }
     function saveTournamentToFile(){const e=document.getElementById("tournamentSelector").value,t={version:"2.1",tournamentType:e,date:localStorage.getItem("tournamentDate"),director:localStorage.getItem("tournamentDirector"),endTime:localStorage.getItem("registrationEndTime"),prizePool:localStorage.getItem("prizePool"),prizes:JSON.parse(localStorage.getItem("tournamentPrizes")||"{}"),limits:getGameLimits(),chips:getChips(),clients:getClientesTorneo(e),finalists:getFinalists(e),rouletteBallCount:localStorage.getItem("rouletteBallCount")||"3"};const o=JSON.stringify(t,null,2),n=new Blob([o],{type:"application/json"}),l=document.createElement("a");l.href=URL.createObjectURL(n),l.download=`torneo_${e}_${t.date}.json`,l.click(),URL.revokeObjectURL(l.href),showToast("Torneo guardado correctamente.",!0)}
     function loadTournamentFromFile(e){const t=e.target.files[0];if(!t)return;const o=new FileReader;o.onload=t=>{let o;try{o=JSON.parse(t.target.result)}catch(e){return console.error("Error de sintaxis JSON:",e),void showToast("Error crítico: El archivo no es un JSON válido.")}let n=o.clients||o.participants;if(!o.tournamentType||!n||!Array.isArray(n))return void showToast("Error de validación: Archivo no es un torneo válido.");const l=e=>{return e.hasOwnProperty("cuponTorneo")&&(e.cuponSorteo=e.cuponTorneo,delete e.cuponTorneo),e.hasOwnProperty("cuponCanjeo")&&(e.ticketCanje=e.cuponCanjeo,delete e.cuponCanjeo),e};n=n.map(l);let a=(o.finalists||[]).map(l);try{const t=o.tournamentType;localStorage.setItem("selectedTournament",t),localStorage.setItem("tournamentDate",o.date||""),localStorage.setItem("tournamentDirector",o.director||""),localStorage.setItem("registrationEndTime",o.endTime||""),localStorage.setItem("prizePool",o.prizePool||"0"),localStorage.setItem("tournamentPrizes",JSON.stringify(o.prizes||{})),localStorage.setItem("gameLimits",JSON.stringify(o.limits||{})),localStorage.setItem("rouletteBallCount",o.rouletteBallCount||"3"),saveChips(o.chips||[]),saveClientesTorneo(t,n),saveFinalists(t,a),document.getElementById("tournamentSelector").value=t,document.getElementById("tournamentDate").value=o.date||(new Date).toISOString().split("T")[0],document.getElementById("tournamentDirector").value=o.director||"";const l=o.prizes||{};document.getElementById("prizePoolInput").value=formatNumberForDisplay(o.prizePool),document.getElementById("firstPrize").value=formatNumberForDisplay(l.first),document.getElementById("secondPrize").value=formatNumberForDisplay(l.second),document.getElementById("thirdPrize").value=formatNumberForDisplay(l.third);const r=o.limits||{};document.getElementById("minBetInput").value=formatNumberForDisplay(r.minBet),document.getElementById("maxBetInput").value=formatNumberForDisplay(r.maxBet),document.getElementById("minPlenoInput").value=formatNumberForDisplay(r.minPleno),document.getElementById("maxPlenoInput").value=formatNumberForDisplay(r.maxPleno),document.getElementById("rouletteBallCount").value=o.rouletteBallCount||"3",showToast("Torneo cargado correctamente.",!0),closeConfigModal(),changeTournament()}catch(t){console.error("Error al aplicar datos del torneo:",t),showToast("Error de aplicación. Prueba un Reinicio Forzado.")}finally{e.target.value=""}},o.readAsText(t)}
     function hardReset(){confirm("ADVERTENCIA: ¿Estás seguro de que quieres hacer un reinicio forzado? Se borrarán TODOS los datos de TODOS los torneos del navegador (clientes, planillas, configuración). Esta acción es irreversible.")&&(localStorage.clear(),alert("Se han borrado todos los datos. La página se recargará para empezar de cero."),window.location.reload())}
@@ -463,31 +493,26 @@
     function saveRouletteConfig(){localStorage.setItem("rouletteBallCount",document.getElementById("rouletteBallCount").value),renderClients(document.getElementById("tournamentSelector").value),initializeSortable(),showToast("Configuración de ruleta guardada.",!0)}
     function saveGameLimits(){const e={minBet:document.getElementById("minBetInput").value.replace(/\./g,""),maxBet:document.getElementById("maxBetInput").value.replace(/\./g,""),minPleno:document.getElementById("minPlenoInput").value.replace(/\./g,""),maxPleno:document.getElementById("maxPlenoInput").value.replace(/\./g,"")};localStorage.setItem("gameLimits",JSON.stringify(e)),showToast("Límites del juego guardados.",!0)}
     function changeTournament(){const e=document.getElementById("tournamentSelector").value,t=TOURNAMENTS[e];localStorage.setItem("selectedTournament",e),document.getElementById("mainTournamentTitle").textContent=t.name;const o=document.getElementById("pokerBlackjackConfig"),n=document.getElementById("rouletteLimitsConfig");o.classList.toggle("hidden","cards"!==t.type),n.classList.toggle("hidden","roulette"!==t.type),document.getElementById("rouletteConfig").classList.toggle("hidden","roulette"!==t.type),document.getElementById("chipConfigSection").classList.toggle("hidden","cards"!==t.type);const l=document.getElementById("tournamentDate").value;l?(()=>{const[e,t,o]=l.split("-");document.getElementById("mainDateDisplay").textContent=`Fecha del Torneo: ${o}/${t}/${e}`})():document.getElementById("mainDateDisplay").textContent="Fecha no definida",selectedIndices=[],showClassificationView(),renderClients(e),initializeSortable()}
-    
     document.addEventListener("DOMContentLoaded",()=>{
         const e=document.getElementById("tournamentSelector");Object.keys(TOURNAMENTS).forEach(t=>e.add(new Option(TOURNAMENTS[t].name,t))),e.value=localStorage.getItem("selectedTournament")||"ruleta",document.getElementById("tournamentDate").value=localStorage.getItem("tournamentDate")||(new Date).toISOString().split("T")[0],document.getElementById("tournamentDirector").value=localStorage.getItem("tournamentDirector")||"";const t=document.getElementById("prizePoolInput");t.value=formatNumberForDisplay(localStorage.getItem("prizePool"));const o=JSON.parse(localStorage.getItem("tournamentPrizes")||"{}");document.getElementById("firstPrize").value=formatNumberForDisplay(o.first),document.getElementById("secondPrize").value=formatNumberForDisplay(o.second),document.getElementById("thirdPrize").value=formatNumberForDisplay(o.third);const n=getGameLimits();document.getElementById("minBetInput").value=formatNumberForDisplay(n.minBet),document.getElementById("maxBetInput").value=formatNumberForDisplay(n.maxBet),document.getElementById("minPlenoInput").value=formatNumberForDisplay(n.minPleno),document.getElementById("maxPlenoInput").value=formatNumberForDisplay(n.maxPleno),document.getElementById("registrationEndTime").value=localStorage.getItem("registrationEndTime")||"",document.getElementById("rouletteBallCount").value=localStorage.getItem("rouletteBallCount")||"3",localStorage.setItem("tournament_view_state","classification"),changeTournament();
-        
-        // El buscador ahora usa la base de datos de SHEETS
         document.getElementById("addNombre").addEventListener("input", async (e) => {
             const searchTerm = e.target.value.toLowerCase();
             const resultsContainer = document.getElementById("searchResults");
             resultsContainer.innerHTML = "";
             document.getElementById("addRut").classList.add("hidden");
             selectedClientRut = null;
-
             if (searchTerm.length > 0) {
-                const clientesBase = await getClientesFromSheet(); // Llama a la base de datos de Sheets
+                const clientesBase = await getClientesFromSheet();
                 const filtered = clientesBase.filter(c => (c.nombre + " " + c.apellido).toLowerCase().includes(searchTerm));
-                
                 if (filtered.length > 0) {
-                    filtered.slice(0, 10).forEach(client => { // Limita a 10 resultados
+                    filtered.slice(0, 10).forEach(client => {
                         const div = document.createElement("div");
                         div.className = "p-2 hover:bg-gray-200 cursor-pointer";
                         div.textContent = `${client.nombre} ${client.apellido}`;
                         div.onclick = () => {
                             document.getElementById("addNombre").value = client.nombre;
                             document.getElementById("addApellido").value = client.apellido;
-                            selectedClientRut = client.rut; // Guarda el RUT del cliente encontrado
+                            selectedClientRut = client.rut;
                             resultsContainer.classList.add("hidden");
                         };
                         resultsContainer.appendChild(div);
@@ -500,10 +525,7 @@
                 resultsContainer.classList.add("hidden");
             }
         });
-
         window.addEventListener("click",e=>{"addNombre"!==e.target.id&&document.getElementById("searchResults")&&document.getElementById("searchResults").classList.add("hidden"),e.target.classList.contains("modal-container")&&(e.target.style.display="none")});
-        
-        // Carga la base de datos de Sheets al iniciar la página para que la primera búsqueda sea rápida.
         getClientesFromSheet();
     });
     </script>
