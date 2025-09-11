@@ -41,22 +41,20 @@
                 <table id="clientTable" class="min-w-full bg-white">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="py-3 px-4 text-left">Nombre</th>
-                            <th class="py-3 px-4 text-left">Apellido</th>
-                            <th class="py-3 px-4 text-left">RUT</th>
+                            <th onclick="sortTable('nombre')" class="py-3 px-4 text-left cursor-pointer hover:bg-gray-200 transition-colors">Nombre <span id="sort-nombre"></span></th>
+                            <th onclick="sortTable('apellido')" class="py-3 px-4 text-left cursor-pointer hover:bg-gray-200 transition-colors">Apellido <span id="sort-apellido"></span></th>
+                            <th onclick="sortTable('rut')" class="py-3 px-4 text-left cursor-pointer hover:bg-gray-200 transition-colors">RUT <span id="sort-rut"></span></th>
                             <th class="py-3 px-4 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Fila de carga inicial -->
-                         <tr><td colspan="4" class="text-center p-8 text-gray-500" id="loadingMessage">Cargando clientes...</td></tr>
+                        <tr><td colspan="4" class="text-center p-8 text-gray-500" id="loadingMessage">Cargando clientes...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Modals (Add, Edit, Delete) -->
     <div id="addClientModal" class="modal-container">
          <div class="modal-content">
             <span class="close-btn" onclick="closeModal('addClientModal')">&times;</span>
@@ -112,6 +110,8 @@
     // --- 1. CONFIGURACIÓN Y CONEXIÓN ---
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzgS7g3_yAEZA_56BtVqJ6-RRt1f_o8wMfdjzGVuLKzXvLH8Z-KiJP4E1SQLoE-edRdJw/exec';
     let clientsCache = []; // Caché en memoria para la lista de clientes.
+    let currentSortKey = 'nombre'; // Columna por defecto para ordenar
+    let currentSortDirection = 'asc'; // Dirección por defecto
 
     /**
      * Muestra notificaciones temporales en la pantalla.
@@ -161,7 +161,7 @@
      */
     function renderClients() {
         const tableBody = document.querySelector('#clientTable tbody');
-        tableBody.innerHTML = ''; // Limpia la tabla
+        tableBody.innerHTML = ''; 
 
         if (clientsCache.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-gray-500">No hay clientes en la base de datos.</td></tr>';
@@ -169,7 +169,7 @@
         }
 
         clientsCache.forEach(client => {
-            if (!client || !client.rut) return; // Salta filas vacías o corruptas
+            if (!client || !client.rut) return; 
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-gray-50 transition-colors border-b';
             tr.innerHTML = `
@@ -183,7 +183,7 @@
             `;
             tableBody.appendChild(tr);
         });
-        filterTable(); // Aplica el filtro actual después de renderizar
+        filterTable(); 
     }
 
     /**
@@ -197,6 +197,48 @@
             row.style.display = rowText.includes(searchTerm) ? '' : 'none';
         });
     }
+
+    /**
+     * NUEVO: Ordena la tabla por la columna especificada.
+     */
+    function sortTable(key) {
+        if (currentSortKey === key) {
+            // Si se hace clic en la misma columna, invierte la dirección
+            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            // Si es una nueva columna, resetea a ascendente
+            currentSortKey = key;
+            currentSortDirection = 'asc';
+        }
+
+        // Ordena la caché de clientes
+        clientsCache.sort((a, b) => {
+            if (!a[key] || !b[key]) return 0;
+
+            // localeCompare es ideal para ordenar texto, incluyendo RUTs como texto
+            const comparison = a[key].localeCompare(b[key], 'es', { numeric: true });
+            
+            return currentSortDirection === 'asc' ? comparison : -comparison; // Invierte si es descendente
+        });
+        
+        updateSortIndicators();
+        renderClients();
+    }
+
+    /**
+     * NUEVO: Actualiza las flechas indicadoras en las cabeceras de la tabla.
+     */
+    function updateSortIndicators() {
+        // Limpia todos los indicadores primero
+        document.querySelectorAll('th span').forEach(span => span.textContent = '');
+        
+        // Añade el indicador a la columna activa
+        const indicatorSpan = document.getElementById(`sort-${currentSortKey}`);
+        if (indicatorSpan) {
+            indicatorSpan.textContent = currentSortDirection === 'asc' ? ' ▲' : ' ▼';
+        }
+    }
+
 
     // --- 3. LÓGICA DE CLIENTES (AÑADIR, EDITAR, ELIMINAR) ---
 
@@ -212,7 +254,7 @@
         const result = await fetchFromSheet('addClient', { nombre, apellido, rut });
         if (result) {
             clientsCache.push({ nombre, apellido, rut });
-            renderClients();
+            sortTable(currentSortKey); // Re-ordena y renderiza
             closeModal('addClientModal');
             showToast("Cliente añadido con éxito.");
         }
@@ -231,7 +273,7 @@
             if (clientIndex > -1) {
                 clientsCache[clientIndex] = { ...clientsCache[clientIndex], nombre, apellido };
             }
-            renderClients();
+            sortTable(currentSortKey); // Re-ordena y renderiza
             closeModal('editClientModal');
             showToast("Cliente actualizado con éxito.");
         }
@@ -241,7 +283,7 @@
         const result = await fetchFromSheet('deleteClient', { rut });
         if (result) {
             clientsCache = clientsCache.filter(c => c.rut !== rut);
-            renderClients();
+            renderClients(); // No es necesario re-ordenar, solo re-renderizar
             showToast("Cliente eliminado.");
         }
         closeModal('deleteConfirmationModal');
@@ -274,12 +316,12 @@
                 const result = await fetchFromSheet('importClients', importedData);
                 if (result) {
                     showToast(result.message);
-                    await loadInitialData(); // Recarga todo desde la hoja
+                    await loadInitialData(); 
                 }
             } catch (error) {
                 showToast("Error al leer el archivo JSON: " + error.message);
             } finally {
-                event.target.value = ''; // Resetea el input de archivo
+                event.target.value = ''; 
                 closeModal('addClientModal');
             }
         };
@@ -341,7 +383,7 @@
         const data = await fetchFromSheet('getClients');
         if (data) {
             clientsCache = data;
-            renderClients();
+            sortTable(currentSortKey); // Ordena y renderiza los datos iniciales
         }
     }
     
@@ -351,5 +393,3 @@
     </script>
 </body>
 </html>
-
-
