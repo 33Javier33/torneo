@@ -27,20 +27,6 @@
         }
         .close-btn { position: absolute; top: 1rem; right: 1.5rem; font-size: 2rem; color: #94a3b8; cursor: pointer; }
         
-        .header-nav { 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            display: flex; 
-            justify-content: space-between; /* Alinea los botones a los extremos */
-            align-items: center;
-            padding: 1rem 1.5rem; 
-            z-index: 20; 
-            background-color: #f0f4f8;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        
         .toast { visibility: hidden; min-width: 250px; background-color: #c81e1e; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 100; left: 50%; transform: translateX(-50%); bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: all 0.5s ease-out; }
         .toast.success { background-color: #2c3e50; }
         .toast.show { visibility: visible; bottom: 50px; }
@@ -74,9 +60,20 @@
         .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #2196F3; }
         input:checked + .slider:before { transform: translateX(26px); }
+        
+        /* --- MODIFICADO: Botones de navegación posicionados individualmente --- */
+        .nav-button {
+            position: fixed;
+            top: 1rem;
+            z-index: 20;
+        }
     </style>
 </head>
-<body class="flex flex-col items-center p-4 md:p-8 min-h-screen pt-20">
+<body class="flex flex-col items-center p-4 md:p-8 min-h-screen">
+
+    <!-- Botones de navegación sin contenedor -->
+    <a href="base/index.html" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors nav-button" style="left: 1.5rem;">Base de Datos</a>
+    <a href="torneo/index.html" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors nav-button" style="right: 1.5rem;">Ver Torneo</a>
 
     <div id="rutModal" class="modal-container"><div id="modalContent" class="modal-content"></div></div>
     
@@ -172,11 +169,6 @@
     </div>
 
     <div id="toast" class="toast"></div>
-    
-    <div class="header-nav">
-        <a href="base/index.html" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">Base de Datos</a>
-        <a href="torneo/index.html" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors">Ver Torneo</a>
-    </div>
 
     <div class="container">
         <div id="classificationView">
@@ -343,7 +335,6 @@
     // --- 3. RESTO DEL CÓDIGO ---
     const TOURNAMENTS = { ruleta: { name: 'Torneo de Ruleta', playersPerTable: 5, type: 'roulette' }, draw_poker: { name: 'Torneo de Draw Poker', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }, blackjack: { name: 'Torneo de Blackjack', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }, ruleta_vip: { name: 'Torneo de Ruleta VIP', playersPerTable: 5, type: 'roulette' }, draw_poker_vip: { name: 'Torneo de Draw Poker VIP', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }, blackjack_vip: { name: 'Torneo de Blackjack VIP', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' } };
     const PREDEFINED_COLORS = ['#E53935', '#D81B60', '#8E24AA', '#1E88E5', '#00897B', '#43A047', '#FDD835', '#FB8C00', '#6D4C41', '#455A64', '#FFFFFF', '#000000'];
-    // --- CORRECCIÓN: Se mueve la declaración de la variable al scope global para evitar errores ---
     let selectedIndices = [], sortableInstance = null, chipColorPickerTarget = null, selectedClientRut = null;
     function getTournamentRounds(e){const t=TOURNAMENTS[e];if(!t)return[];if("roulette"===t.type){const e=parseInt(localStorage.getItem("rouletteBallCount")||"3");return Array.from({length:e},(e,t)=>`Bolita ${t+1}`)}return t.rounds||[]}
     function showToast(e,t=!1, duration=3000){const o=document.getElementById("toast");o.textContent=e,o.className=`toast show ${t?"success":""}`,setTimeout(()=>o.classList.remove("show"),duration)}
