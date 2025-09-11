@@ -7,32 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8;
-            color: #1e293b;
-        }
-        .toast {
-            visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center;
-            border-radius: 8px; padding: 16px; position: fixed; z-index: 100; left: 50%;
-            transform: translateX(-50%); bottom: 30px; transition: visibility 0s, opacity 0.5s linear; opacity: 0;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; color: #1e293b; }
+        .toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 100; left: 50%; transform: translateX(-50%); bottom: 30px; transition: visibility 0s, opacity 0.5s linear; opacity: 0; }
         .toast.show { visibility: visible; opacity: 1; }
-
-        .modal-container { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background-color: rgba(0, 0, 0, 0.6); display: none; 
-            justify-content: center; align-items: center; z-index: 50; 
-        }
-        .modal-content { 
-            background-color: white; padding: 2rem; border-radius: 1rem; 
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); max-width: 90%; 
-            width: 500px; position: relative; max-height: 90vh; overflow-y: auto;
-        }
-        .close-btn { 
-            position: absolute; top: 1rem; right: 1.5rem; font-size: 2rem; 
-            color: #94a3b8; cursor: pointer; 
-        }
+        .modal-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 50; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); max-width: 90%; width: 500px; position: relative; max-height: 90vh; overflow-y: auto; }
+        .close-btn { position: absolute; top: 1rem; right: 1.5rem; font-size: 2rem; color: #94a3b8; cursor: pointer; }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4 md:p-8">
@@ -55,37 +35,31 @@
                         Añadir y Gestionar Clientes
                     </button>
                 </div>
-                <div id="searchHelper" class="hidden mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                    <p id="searchHelperMessage" class="mb-2 font-semibold text-slate-700"></p>
-                    <div class="flex flex-wrap gap-2">
-                        <input type="text" id="helperRut" placeholder="RUT del nuevo cliente" oninput="formatRut(this)" maxlength="12" class="flex-grow p-2 border rounded-md min-w-[150px]">
-                        <button onclick="prepareAddClient()" class="bg-emerald-600 text-white px-6 py-2 rounded-md font-bold hover:bg-emerald-700 transition-colors">
-                            Añadir Cliente
-                        </button>
-                    </div>
-                </div>
             </div>
             
             <div class="overflow-x-auto">
                 <table id="clientTable" class="min-w-full bg-white">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-200" onclick="sortTable('nombre')">Nombre ⇅</th>
+                            <th class="py-3 px-4 text-left">Nombre</th>
                             <th class="py-3 px-4 text-left">Apellido</th>
-                            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-200" onclick="sortTable('rut')">RUT ⇅</th>
+                            <th class="py-3 px-4 text-left">RUT</th>
                             <th class="py-3 px-4 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        </tbody>
+                        <!-- Fila de carga inicial -->
+                         <tr><td colspan="4" class="text-center p-8 text-gray-500" id="loadingMessage">Cargando clientes...</td></tr>
+                    </tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- Modals (Add, Edit, Delete) -->
     <div id="addClientModal" class="modal-container">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeAddClientModal()">&times;</span>
+         <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('addClientModal')">&times;</span>
             <h2 class="text-2xl font-bold mb-4">Gestión de Clientes</h2>
             
             <div class="flex flex-wrap gap-2 mb-2">
@@ -108,30 +82,17 @@
     </div>
     <div id="editClientModal" class="modal-container">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeEditClientModal()">&times;</span>
+            <span class="close-btn" onclick="closeModal('editClientModal')">&times;</span>
             <h2 class="text-2xl font-bold mb-6">Editar Cliente</h2>
-            <input type="hidden" id="editClientIndex">
+            <input type="hidden" id="originalRut">
             
             <div class="space-y-4">
-                <div>
-                    <label for="editNombre" class="block font-bold mb-1">Nombre:</label>
-                    <input type="text" id="editNombre" class="w-full p-2 border rounded-md">
-                </div>
-                <div>
-                    <label for="editApellido" class="block font-bold mb-1">Apellido:</label>
-                    <input type="text" id="editApellido" class="w-full p-2 border rounded-md">
-                </div>
-                <div>
-                    <label for="editRut" class="block font-bold mb-1">RUT:</label>
-                    <input type="text" id="editRut" oninput="formatRut(this)" maxlength="12" class="w-full p-2 border rounded-md">
-                </div>
+                <div><label for="editNombre" class="block font-bold mb-1">Nombre:</label><input type="text" id="editNombre" class="w-full p-2 border rounded-md"></div>
+                <div><label for="editApellido" class="block font-bold mb-1">Apellido:</label><input type="text" id="editApellido" class="w-full p-2 border rounded-md"></div>
+                <div><label for="editRut" class="block font-bold mb-1">RUT:</label><p id="editRut" class="w-full p-2 border rounded-md bg-gray-100"></p></div>
             </div>
             
-            <div class="mt-8 flex justify-end">
-                <button onclick="saveClientChanges()" class="bg-blue-600 text-white px-8 py-2 rounded-md font-bold hover:bg-blue-700 transition-colors">
-                    Guardar Cambios
-                </button>
-            </div>
+            <div class="mt-8 flex justify-end"><button onclick="saveClientChanges()" class="bg-blue-600 text-white px-8 py-2 rounded-md font-bold hover:bg-blue-700 transition-colors">Guardar Cambios</button></div>
         </div>
     </div>
     <div id="deleteConfirmationModal" class="modal-container">
@@ -139,382 +100,256 @@
             <h3 class="text-2xl font-bold text-gray-800 mb-4">Confirmar Eliminación</h3>
             <p class="text-gray-600 mb-6">¿Estás seguro de que quieres eliminar a este cliente? Esta acción no se puede deshacer.</p>
             <div class="flex justify-end gap-4">
-                <button onclick="hideDeleteModal()" class="px-6 py-2 rounded-md font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button onclick="closeModal('deleteConfirmationModal')" class="px-6 py-2 rounded-md font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors">Cancelar</button>
                 <button id="confirmDeleteButton" class="px-6 py-2 rounded-md font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors">Eliminar</button>
             </div>
         </div>
     </div>
 
-    <footer class="mt-auto pt-8 text-center text-gray-500 text-sm">
-        <p>CarlosPN Interactive®</p>
-    </footer>
+    <footer class="mt-auto pt-8 text-center text-gray-500 text-sm"><p>CarlosPN Interactive®</p></footer>
 
     <script>
-        let clientToDeleteIndex = null;
-        let sortState = { column: null, direction: 'asc' };
+    // --- 1. CONFIGURACIÓN Y CONEXIÓN ---
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzgS7g3_yAEZA_56BtVqJ6-RRt1f_o8wMfdjzGVuLKzXvLH8Z-KiJP4E1SQLoE-edRdJw/exec';
+    let clientsCache = []; // Caché en memoria para la lista de clientes.
 
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    /**
+     * Muestra notificaciones temporales en la pantalla.
+     */
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    /**
+     * Función central para comunicarse con el Google Apps Script.
+     */
+    async function fetchFromSheet(action, data = {}) {
+        const method = (action === 'getClients') ? 'GET' : 'POST';
+        let url = SCRIPT_URL;
+        const options = { method, redirect: 'follow' };
+
+        if (method === 'GET') {
+            url += `?action=${action}`;
+        } else {
+            const body = new FormData();
+            body.append('action', action);
+            body.append('data', JSON.stringify(data));
+            options.body = body;
         }
 
-        function getClients() {
-            return JSON.parse(localStorage.getItem('clientes_base') || '[]');
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) throw new Error(`Error de red: ${response.statusText}`);
+            const result = await response.json();
+            if (result.status === 'error') throw new Error(result.message);
+            return result.data;
+        } catch (error) {
+            console.error('Error en la operación con la hoja:', error);
+            showToast(`Error: ${error.message}`);
+            document.getElementById('loadingMessage').textContent = `Error al cargar: ${error.message}`;
+            return null;
+        }
+    }
+
+    // --- 2. RENDERIZADO Y MANEJO DE LA TABLA ---
+    
+    /**
+     * Dibuja la tabla de clientes con los datos de la caché.
+     */
+    function renderClients() {
+        const tableBody = document.querySelector('#clientTable tbody');
+        tableBody.innerHTML = ''; // Limpia la tabla
+
+        if (clientsCache.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-gray-500">No hay clientes en la base de datos.</td></tr>';
+            return;
         }
 
-        function saveClients(clients) {
-            localStorage.setItem('clientes_base', JSON.stringify(clients));
-        }
+        clientsCache.forEach(client => {
+            if (!client || !client.rut) return; // Salta filas vacías o corruptas
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50 transition-colors border-b';
+            tr.innerHTML = `
+                <td class="py-3 px-4">${client.nombre}</td>
+                <td class="py-3 px-4">${client.apellido}</td>
+                <td class="py-3 px-4">${client.rut}</td>
+                <td class="py-3 px-4 text-center space-x-2">
+                    <button onclick='openEditClientModal("${client.rut}")' class="bg-amber-500 text-white px-3 py-1 rounded-md text-xs hover:bg-amber-600">Editar</button>
+                    <button onclick='showDeleteModal("${client.rut}")' class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">Eliminar</button>
+                </td>
+            `;
+            tableBody.appendChild(tr);
+        });
+        filterTable(); // Aplica el filtro actual después de renderizar
+    }
 
-        function renderClients(clientList = null) {
-            const clients = clientList || getClients();
-            const masterClientList = getClients(); // Siempre la lista original para el índice
-            const tableBody = document.querySelector('#clientTable tbody');
-            tableBody.innerHTML = '';
-            
-            clients.forEach((client) => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-gray-50 transition-colors border-b';
-                
-                const originalIndex = masterClientList.findIndex(c => c.rut === client.rut);
+    /**
+     * Filtra la tabla basándose en el campo de búsqueda.
+     */
+    function filterTable() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#clientTable tbody tr');
+        rows.forEach(row => {
+            const rowText = row.textContent.toLowerCase();
+            row.style.display = rowText.includes(searchTerm) ? '' : 'none';
+        });
+    }
 
-                tr.innerHTML = `
-                    <td class="py-3 px-4">${client.nombre}</td>
-                    <td class="py-3 px-4">${client.apellido}</td>
-                    <td class="py-3 px-4">${client.rut}</td>
-                    <td class="py-3 px-4 text-center space-x-2">
-                        <button onclick="openEditClientModal(${originalIndex})" class="bg-amber-500 text-white px-3 py-1 rounded-md text-xs hover:bg-amber-600">Editar</button>
-                        <button onclick="showDeleteModalByIndex(${originalIndex})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">Eliminar</button>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
-            filterTable();
-        }
+    // --- 3. LÓGICA DE CLIENTES (AÑADIR, EDITAR, ELIMINAR) ---
 
-        function filterTable() {
-            const searchInput = document.getElementById('searchInput');
-            const searchTerm = searchInput.value.toLowerCase();
-            const tableBody = document.querySelector('#clientTable tbody');
-            const rows = tableBody.getElementsByTagName('tr');
-            const searchHelper = document.getElementById('searchHelper');
-            const helperMessage = document.getElementById('searchHelperMessage');
+    async function addClient() {
+        const nombre = document.getElementById('addNombre').value.trim();
+        const apellido = document.getElementById('addApellido').value.trim();
+        const rut = document.getElementById('addRut').value.trim();
 
-            let visibleRows = 0;
-            for (let i = 0; i < rows.length; i++) {
-                const nombre = rows[i].cells[0].textContent.toLowerCase();
-                const apellido = rows[i].cells[1].textContent.toLowerCase();
-                const rut = rows[i].cells[2].textContent.toLowerCase();
+        if (!nombre || !apellido || !rut) return showToast("Todos los campos son obligatorios.");
+        if (!validateRut(rut)) return showToast("El formato del RUT no es válido. Ej: 12.345.678-9");
+        if (clientsCache.some(c => c.rut === rut)) return showToast("Un cliente con este RUT ya existe.");
 
-                if (nombre.includes(searchTerm) || apellido.includes(searchTerm) || rut.includes(searchTerm)) {
-                    rows[i].style.display = '';
-                    visibleRows++;
-                } else {
-                    rows[i].style.display = 'none';
-                }
-            }
-
-            if (searchTerm.length > 1 && visibleRows === 0) {
-                helperMessage.textContent = `"${searchInput.value}" no fue encontrado. Añádelo:`;
-                searchHelper.classList.remove('hidden');
-            } else {
-                searchHelper.classList.add('hidden');
-            }
-        }
-        
-        function prepareAddClient() {
-            const searchInput = document.getElementById('searchInput');
-            const helperRutInput = document.getElementById('helperRut');
-            const fullName = searchInput.value.trim();
-            const rut = helperRutInput.value.trim();
-
-            if (!fullName) {
-                return showToast("El nombre en la barra de búsqueda no puede estar vacío.");
-            }
-            if (!validateRut(rut)) {
-                return showToast("El formato del RUT no es válido. Ej: 12.345.678-9");
-            }
-            if (getClients().some(client => client.rut === rut)) {
-                return showToast("Este RUT ya está registrado. Búscalo en la tabla.");
-            }
-
-            openAddClientModal();
-            const nameParts = fullName.split(' ');
-            const apellido = nameParts.length > 1 ? nameParts.pop() : '';
-            const nombre = nameParts.join(' ');
-            
-            document.getElementById('addNombre').value = nombre;
-            document.getElementById('addApellido').value = apellido;
-            document.getElementById('addRut').value = rut;
-            
-            searchInput.value = '';
-            helperRutInput.value = '';
-            filterTable();
-        }
-
-
-        function formatRut(input) {
-            let rut = input.value.replace(/[^\dkK]/g, '').replace(/^0+/, '');
-            if (rut.length > 1) {
-                let body = rut.slice(0, -1);
-                let dv = rut.slice(-1).toUpperCase();
-                input.value = `${new Intl.NumberFormat('es-CL').format(body)}-${dv}`;
-            } else {
-                input.value = rut;
-            }
-        }
-
-        function validateRut(rut) {
-            return /^[0-9]{1,2}\.[0-9]{3}\.[0-9]{3}-[0-9kK]{1}$/.test(rut);
-        }
-
-        function addClient() {
-            const nombreInput = document.getElementById('addNombre');
-            const apellidoInput = document.getElementById('addApellido');
-            const rutInput = document.getElementById('addRut');
-
-            const nombre = nombreInput.value.trim();
-            const apellido = apellidoInput.value.trim();
-            const rut = rutInput.value.trim();
-
-            if (!nombre || !apellido || !rut) {
-                return showToast("Todos los campos son obligatorios.");
-            }
-            if (!validateRut(rut)) {
-                return showToast("El formato del RUT no es válido. Ej: 12.345.678-9");
-            }
-
-            const clients = getClients();
-            if (clients.some(client => client.rut === rut)) {
-                return showToast("Un cliente con este RUT ya existe.");
-            }
-
-            clients.push({ nombre, apellido, rut });
-            saveClients(clients);
+        const result = await fetchFromSheet('addClient', { nombre, apellido, rut });
+        if (result) {
+            clientsCache.push({ nombre, apellido, rut });
             renderClients();
-            closeAddClientModal();
+            closeModal('addClientModal');
             showToast("Cliente añadido con éxito.");
         }
+    }
 
-        function checkExistingRut() {
-            const rutInput = document.getElementById('addRut');
-            const nombreInput = document.getElementById('addNombre');
-            const apellidoInput = document.getElementById('addApellido');
-            const addButton = document.getElementById('addClientButton');
-            const messageDiv = document.getElementById('rutMessage');
-            
-            const rut = rutInput.value.trim();
-            if (!rut) {
-                nombreInput.disabled = false;
-                apellidoInput.disabled = false;
-                addButton.disabled = false;
-                messageDiv.textContent = '';
-                return;
+    async function saveClientChanges() {
+        const originalRut = document.getElementById('originalRut').value;
+        const nombre = document.getElementById('editNombre').value.trim();
+        const apellido = document.getElementById('editApellido').value.trim();
+
+        if (!nombre || !apellido) return showToast("Todos los campos son obligatorios.");
+        
+        const result = await fetchFromSheet('updateClient', { rut: originalRut, nombre, apellido });
+        if (result) {
+            const clientIndex = clientsCache.findIndex(c => c.rut === originalRut);
+            if (clientIndex > -1) {
+                clientsCache[clientIndex] = { ...clientsCache[clientIndex], nombre, apellido };
             }
-
-            const existingClient = getClients().find(client => client.rut === rut);
-
-            if (existingClient) {
-                nombreInput.value = existingClient.nombre;
-                apellidoInput.value = existingClient.apellido;
-                nombreInput.disabled = true;
-                apellidoInput.disabled = true;
-                addButton.disabled = true;
-                messageDiv.textContent = 'Este RUT ya se encuentra registrado.';
-            } else {
-                nombreInput.disabled = false;
-                apellidoInput.disabled = false;
-                addButton.disabled = false;
-                messageDiv.textContent = '';
-            }
-        }
-
-        function openAddClientModal() {
-            document.getElementById('addNombre').value = '';
-            document.getElementById('addApellido').value = '';
-            document.getElementById('addRut').value = '';
-            checkExistingRut();
-            document.getElementById('addClientModal').style.display = 'flex';
-        }
-        function closeAddClientModal() {
-            document.getElementById('addClientModal').style.display = 'none';
-        }
-
-        // --- INICIO: Funciones para Editar Cliente ---
-        function openEditClientModal(index) {
-            const clients = getClients();
-            const client = clients[index];
-            if (!client) return;
-
-            document.getElementById('editClientIndex').value = index;
-            document.getElementById('editNombre').value = client.nombre;
-            document.getElementById('editApellido').value = client.apellido;
-            document.getElementById('editRut').value = client.rut;
-            
-            document.getElementById('editClientModal').style.display = 'flex';
-        }
-
-        function closeEditClientModal() {
-            document.getElementById('editClientModal').style.display = 'none';
-        }
-
-        function saveClientChanges() {
-            const index = document.getElementById('editClientIndex').value;
-            const newNombre = document.getElementById('editNombre').value.trim();
-            const newApellido = document.getElementById('editApellido').value.trim();
-            const newRut = document.getElementById('editRut').value.trim();
-            
-            if (!newNombre || !newApellido || !newRut) {
-                return showToast("Todos los campos son obligatorios.");
-            }
-            if (!validateRut(newRut)) {
-                return showToast("El formato del RUT no es válido. Ej: 12.345.678-9");
-            }
-            
-            const clients = getClients();
-            const existingClient = clients.find((client, i) => client.rut === newRut && i != index);
-            if (existingClient) {
-                return showToast("El nuevo RUT ya pertenece a otro cliente.");
-            }
-
-            clients[index].nombre = newNombre;
-            clients[index].apellido = newApellido;
-            clients[index].rut = newRut;
-            
-            saveClients(clients);
             renderClients();
-            closeEditClientModal();
+            closeModal('editClientModal');
             showToast("Cliente actualizado con éxito.");
         }
-        // --- FIN: Funciones para Editar Cliente ---
-
-
-        function showDeleteModalByIndex(index) {
-            clientToDeleteIndex = index;
-            document.getElementById('deleteConfirmationModal').style.display = 'flex';
-        }
-
-        function hideDeleteModal() {
-            document.getElementById('deleteConfirmationModal').style.display = 'none';
-            clientToDeleteIndex = null;
-        }
-
-        function deleteClient(index) {
-            const clients = getClients();
-            clients.splice(index, 1);
-            saveClients(clients);
+    }
+    
+    async function deleteClient(rut) {
+        const result = await fetchFromSheet('deleteClient', { rut });
+        if (result) {
+            clientsCache = clientsCache.filter(c => c.rut !== rut);
             renderClients();
             showToast("Cliente eliminado.");
         }
+        closeModal('deleteConfirmationModal');
+    }
+    
+    // --- 4. IMPORTAR / EXPORTAR ---
 
-        function confirmAndDelete() {
-            if (clientToDeleteIndex !== null) {
-                deleteClient(clientToDeleteIndex);
+    function exportClients() {
+        if (clientsCache.length === 0) return showToast("No hay clientes para exportar.");
+        const dataStr = JSON.stringify(clientsCache, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'clientes.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast("Clientes exportados correctamente.");
+    }
+
+    function importClients(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (!Array.isArray(importedData)) throw new Error("El JSON no es una lista.");
+
+                showToast("Importando clientes, por favor espera...", true);
+                const result = await fetchFromSheet('importClients', importedData);
+                if (result) {
+                    showToast(result.message);
+                    await loadInitialData(); // Recarga todo desde la hoja
+                }
+            } catch (error) {
+                showToast("Error al leer el archivo JSON: " + error.message);
+            } finally {
+                event.target.value = ''; // Resetea el input de archivo
+                closeModal('addClientModal');
             }
-            hideDeleteModal();
+        };
+        reader.readAsText(file);
+    }
+    
+    // --- 5. MANEJO DE MODALES Y UTILIDADES ---
+
+    function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
+    function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+    function openAddClientModal() {
+        document.getElementById('addNombre').value = '';
+        document.getElementById('addApellido').value = '';
+        document.getElementById('addRut').value = '';
+        checkExistingRut();
+        openModal('addClientModal');
+    }
+    function openEditClientModal(rut) {
+        const client = clientsCache.find(c => c.rut === rut);
+        if (!client) return;
+        document.getElementById('originalRut').value = client.rut;
+        document.getElementById('editNombre').value = client.nombre;
+        document.getElementById('editApellido').value = client.apellido;
+        document.getElementById('editRut').textContent = client.rut;
+        openModal('editClientModal');
+    }
+    function showDeleteModal(rut) {
+        const confirmBtn = document.getElementById('confirmDeleteButton');
+        confirmBtn.onclick = () => deleteClient(rut);
+        openModal('deleteConfirmationModal');
+    }
+
+    function checkExistingRut() {
+        const rut = document.getElementById('addRut').value.trim();
+        const messageDiv = document.getElementById('rutMessage');
+        const addButton = document.getElementById('addClientButton');
+        if (clientsCache.some(client => client.rut === rut)) {
+            messageDiv.textContent = 'Este RUT ya se encuentra registrado.';
+            addButton.disabled = true;
+        } else {
+            messageDiv.textContent = '';
+            addButton.disabled = false;
         }
+    }
 
-        function sortTable(column) {
-            if (sortState.column === column) {
-                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortState.column = column;
-                sortState.direction = 'asc';
-            }
+    function formatRut(input) {
+        let rut = input.value.replace(/[^\dkK]/g, '').replace(/^0+/, '');
+        if (rut.length > 1) {
+            let body = rut.slice(0, -1);
+            let dv = rut.slice(-1).toUpperCase();
+            input.value = `${new Intl.NumberFormat('es-CL').format(body)}-${dv}`;
+        } else { input.value = rut; }
+    }
+    function validateRut(rut) { return /^[0-9]{1,2}\.[0-9]{3}\.[0-9]{3}-[0-9kK]{1}$/.test(rut); }
 
-            const clientsToSort = getClients();
-            const isAsc = sortState.direction === 'asc';
+    // --- 6. INICIALIZACIÓN ---
 
-            clientsToSort.sort((a, b) => {
-                let valA, valB;
-                if (column === 'nombre') {
-                    valA = a.nombre.toLowerCase();
-                    valB = b.nombre.toLowerCase();
-                } else {
-                    valA = parseInt(a.rut.split('-')[0].replace(/\./g, ''), 10);
-                    valB = parseInt(b.rut.split('-')[0].replace(/\./g, ''), 10);
-                }
-
-                if (valA < valB) return isAsc ? -1 : 1;
-                if (valA > valB) return isAsc ? 1 : -1;
-                return 0;
-            });
-            
-            updateSortHeaders();
-            renderClients(clientsToSort);
-        }
-        
-        function updateSortHeaders() {
-            document.querySelectorAll('#clientTable th[onclick]').forEach(th => {
-                let baseText = th.textContent.replace(/ [↑↓⇅]/, '');
-                if (th.textContent.toLowerCase().includes(sortState.column)) {
-                    th.textContent = `${baseText} ${sortState.direction === 'asc' ? '↑' : '↓'}`;
-                } else {
-                    th.textContent = `${baseText} ⇅`;
-                }
-            });
-        }
-
-        function exportClients() {
-            const clients = getClients();
-            if (clients.length === 0) return showToast("No hay clientes para exportar.");
-            
-            const dataStr = JSON.stringify(clients, null, 2);
-            const blob = new Blob([dataStr], { type: "application/json" });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'clientes.json';
-            a.click();
-            URL.revokeObjectURL(a.href);
-            showToast("Clientes exportados correctamente.");
-        }
-
-        function importClients(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (!Array.isArray(imported)) throw new Error("JSON no es una lista.");
-
-                    const currentClients = getClients();
-                    const currentRuts = new Set(currentClients.map(c => c.rut));
-                    let addedCount = 0;
-
-                    imported.forEach(newClient => {
-                        if (newClient.nombre && newClient.rut && !currentRuts.has(newClient.rut)) {
-                            currentClients.push(newClient);
-                            currentRuts.add(newClient.rut);
-                            addedCount++;
-                        }
-                    });
-
-                    saveClients(currentClients);
-                    renderClients();
-                    showToast(`${addedCount} cliente(s) nuevo(s) importado(s).`);
-                } catch (error) {
-                    showToast("Error al leer el archivo JSON: " + error.message);
-                } finally {
-                    event.target.value = '';
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
+    async function loadInitialData() {
+        const data = await fetchFromSheet('getClients');
+        if (data) {
+            clientsCache = data;
             renderClients();
-            document.getElementById('confirmDeleteButton').addEventListener('click', confirmAndDelete);
-
-            window.addEventListener('click', (event) => {
-                if (event.target == document.getElementById('addClientModal')) closeAddClientModal();
-                if (event.target == document.getElementById('editClientModal')) closeEditClientModal();
-                if (event.target == document.getElementById('deleteConfirmationModal')) hideDeleteModal();
-            });
-        });
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        loadInitialData();
+    });
     </script>
 </body>
 </html>
+
+
