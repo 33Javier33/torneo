@@ -229,7 +229,7 @@
     <script>
     // --- 1. CONEXIÓN CON GOOGLE SHEETS (LA PARTE CENTRAL) ---
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzgS7g3_yAEZA_56BtVqJ6-RRt1f_o8wMfdjzGVuLKzXvLH8Z-KiJP4E1SQLoE-edRdJw/exec';
-    let clientesSheetCache = null; // Caché para no llamar a Sheets a cada rato.
+    let clientesSheetCache = null;
 
     async function fetchFromSheet(action, data = {}) {
         const method = (action === 'getClients') ? 'GET' : 'POST';
@@ -359,11 +359,27 @@
     function closeRutModal(){document.getElementById("rutModal").style.display="none"}
     function openConfigModal(){renderChipConfig(),document.getElementById("configModal").style.display="flex"}
     function closeConfigModal(){document.getElementById("configModal").style.display="none"}
-    function renderChipConfig(){const e=document.getElementById("chipConfigContainer");e.innerHTML="";const t=getChips();t.forEach((t,o)=>{const n=document.createElement("div");n.className="flex items-center gap-2";const l=t.image||"";n.innerHTML=`\n                <span class="color-swatch" style="background-color: ${t.color};" onclick="openColorModal(${o}, 'chip')"></span>\n                <input type="text" value="${formatNumberForDisplay(t.value)}" oninput="this.value = formatNumberForDisplay(this.value.replace(/\\./g, ''))" onchange="updateChipValue(${o}, this.value)" placeholder="Valor Ficha" class="p-2 border rounded-md w-full">\n                <input type="text" value="${l}" onchange="updateChipImage(${o}, this.value)" placeholder="Nombre archivo (ej: roja.png)" class="p-2 border rounded-md w-full">\n                <button onclick="removeChip(${o})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">X</button>\n            `,e.appendChild(n)})}
+    function renderChipConfig(){const e=document.getElementById("chipConfigContainer");e.innerHTML="";const t=getChips();t.forEach((t,o)=>{const n=document.createElement("div");n.className="flex items-center gap-2";const l=t.image||"";n.innerHTML=`\n                <span class="color-swatch" style="background-color: ${t.color};" onclick="openColorModal(${o}, 'chip')"></span>\n                <input type="text" value="${formatNumberForDisplay(t.value)}" oninput="this.value = formatNumberForDisplay(this.value.replace(/\\./g, ''))" onchange="updateChipValue(${o}, this.value)" placeholder="Valor Ficha" class="p-2 border rounded-md w-full">\n                <input type="text" value="${l}" onchange="updateChipImage(${o}, this.value)" placeholder="Nombre archivo (ej: roja)" class="p-2 border rounded-md w-full">\n                <button onclick="removeChip(${o})" class="bg-red-500 text-white px-3 py-1 rounded-md text-xs hover:bg-red-600">X</button>\n            `,e.appendChild(n)})}
     function addChip(){let e=getChips();e.push({value:"1000",color:"#6D4C41",image:""}),saveChips(e),renderChipConfig(),showToast("Ficha añadida.",!0)}
     function removeChip(e){let t=getChips();t.splice(e,1),saveChips(t),renderChipConfig(),showToast("Ficha eliminada.",!0)}
     function updateChipValue(e,t){let o=getChips();o[e]&&(o[e].value=t.replace(/\./g,""),saveChips(o),showToast("Valor de ficha actualizado.",!0))}
-    function updateChipImage(e,t){let o=getChips();o[e]&&(o[e].image=t.trim(),saveChips(o),showToast("Imagen de ficha actualizada.",!0))}
+    
+    // --- FUNCIÓN MODIFICADA ---
+    // Ahora, si escribes "roja", se guardará como "roja.png" automáticamente.
+    function updateChipImage(index, value) {
+        let chips = getChips();
+        if (chips[index]) {
+            let imageName = value.trim();
+            // Si el nombre no está vacío y NO termina en .png, se lo agregamos
+            if (imageName && !imageName.toLowerCase().endsWith('.png')) {
+                imageName += '.png';
+            }
+            chips[index].image = imageName;
+            saveChips(chips);
+            showToast("Imagen de ficha actualizada.", true);
+        }
+    }
+
     const classificationView=document.getElementById("classificationView"),finalView=document.getElementById("finalView"),winnersView=document.getElementById("winnersView");function showView(e){[classificationView,finalView,winnersView].forEach(e=>e.style.display="none"),e.style.display="block"}
     function showClassificationView(){showView(classificationView),localStorage.setItem("tournament_view_state","classification")}
     function showFinalView(){showView(finalView),localStorage.setItem("tournament_view_state","final"),renderFinalists()}
@@ -373,8 +389,6 @@
     function renderFinalists(){const e=document.getElementById("tournamentSelector").value,t=getTournamentRounds(e),o=getFinalists(e),n=document.querySelector("#finalistTable tbody"),l=document.querySelector("#finalistTable thead");if(!n||!l)return;n.innerHTML="",l.innerHTML=`<tr><th class="p-3">Finalista</th>${t.map(e=>`<th class="p-3">${e}</th>`).join("")}<th class="p-3">Total Final</th></tr>`,o.forEach((o,l)=>{const a=n.insertRow();a.className=l%2==0?"bg-sky-50":"bg-white",a.insertCell().innerHTML=`<div class="p-2 font-semibold">${o.nombre} ${o.apellido}</div>`,t.forEach(t=>{const n=t.toLowerCase().replace(/ /g,""),i=formatNumberForDisplay(o[n]);a.insertCell().innerHTML=`<div class="p-2"><input type="tel" value="${i}" oninput="formatNumericInput(this)" onchange="updateFinalistScore(${l},'${n}',this.value)" class="score-input"></div>`}),a.insertCell().innerHTML=`<div class="p-2 text-center font-bold">${calculateTotal(o,e).toLocaleString("es-CL")}</div>`})}
     function renderWinners(){const e=JSON.parse(localStorage.getItem("tournamentPrizes")||"{}"),t=document.getElementById("tournamentSelector").value,o=getFinalists(t),n=o.sort((e,o)=>calculateTotal(o,t)-calculateTotal(e,t)),l=document.getElementById("winnersList");l.innerHTML="";const a=[{prize:e.first||0,label:"1er Lugar",color:"bg-amber-400",emoji:"🥇"},{prize:e.second||0,label:"2do Lugar",color:"bg-slate-400",emoji:"🥈"},{prize:e.third||0,label:"3er Lugar",color:"bg-amber-600",emoji:"🥉"}];a.forEach((e,t)=>{n[t]&&(l.innerHTML+=`<div class="p-4 rounded-lg shadow-lg text-white ${e.color}"><div class="flex items-center justify-between"><div><p class="text-2xl font-bold">${e.emoji} ${e.label}</p><p class="text-xl">${n[t].nombre} ${n[t].apellido}</p></div><p class="text-3xl font-extrabold">$${parseInt(e.prize).toLocaleString("es-CL")}</p></div></div>`)})}
     function updateFinalistScore(e,t,o){const n=document.getElementById("tournamentSelector").value;let l=getFinalists(n);l[e]&&(l[e][t]=o.replace(/\D/g,""),saveFinalists(n,l),renderFinalists())}
-    
-    // --- FUNCIÓN DEL PDF MODIFICADA ---
     async function exportToPDF(options = { isFinalReport: false }) {
         const { PDFDocument, rgb, StandardFonts } = PDFLib;
         const pdfDoc = await PDFDocument.create();
@@ -383,39 +397,25 @@
         let page = pdfDoc.addPage();
         const { width, height } = page.getSize();
         let y = height - 40;
-
-        const drawText = (text, options) => {
-            page.drawText(text, {
-                x: options.x, y: y,
-                size: options.size,
-                font: options.isBold ? helveticaBoldFont : helveticaFont,
-                color: rgb(0, 0, 0)
-            });
-        };
-
+        const drawText = (text, options) => { page.drawText(text, { x: options.x, y: y, size: options.size, font: options.isBold ? helveticaBoldFont : helveticaFont, color: rgb(0, 0, 0) }); };
         const tournamentId = document.getElementById("tournamentSelector").value;
         const tournament = TOURNAMENTS[tournamentId];
         const tournamentDate = localStorage.getItem("tournamentDate") || "N/A";
         const tournamentDirector = localStorage.getItem("tournamentDirector") || "N/A";
         const allEntries = getClientesTorneo(tournamentId);
-        
         const uniquePlayersCount = new Set(allEntries.filter(e => !e.isTableBreak).map(e => e.rut)).size;
         const sorteoCount = new Set(allEntries.filter(e => e.cuponSorteo).map(e => e.rut)).size;
         const canjeCount = new Set(allEntries.filter(e => e.ticketCanje).map(e => e.rut)).size;
-
         drawText(tournament.name, { x: 50, size: 24, isBold: true }); y -= 20;
         drawText(`Fecha: ${tournamentDate} | Encargado: ${tournamentDirector}`, { x: 50, size: 12 }); y -= 20;
         drawText(`Jugadores Únicos: ${uniquePlayersCount} | Cupones Sorteo (CS): ${sorteoCount} | Tickets Canje (TC): ${canjeCount}`, { x: 50, size: 12 }); y -= 15;
         page.drawLine({ start: { x: 50, y: y }, end: { x: width - 50, y: y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) }); y -= 30;
-
         if (options.isFinalReport) {
-            // Este es el informe de GANADORES, se mantiene igual.
             drawText("Acta de Entrega de Premios", { x: 50, size: 18, isBold: true }); y -= 30;
             const finalists = getFinalists(tournamentId);
             const sortedFinalists = [...finalists].sort((a, b) => calculateTotal(b, tournamentId) - calculateTotal(a, tournamentId));
             const prizes = JSON.parse(localStorage.getItem("tournamentPrizes") || "{}");
             const prizeDistribution = [ { prize: prizes.first || 0, label: "1er Lugar" }, { prize: prizes.second || 0, label: "2do Lugar" }, { prize: prizes.third || 0, label: "3er Lugar" } ];
-            
             prizeDistribution.forEach((prizeInfo, index) => {
                 if (sortedFinalists[index]) {
                     const winner = sortedFinalists[index];
@@ -427,54 +427,34 @@
                     page.drawLine({ start: { x: 100, y: y - 2 }, end: { x: 300, y: y - 2 }, thickness: .5 }); y -= 50;
                 }
             });
-
         } else {
-            // --- ESTE ES EL INFORME MODIFICADO ---
             drawText("Informe de Participantes y Cupones", { x: 50, size: 18, isBold: true }); y -= 30;
-            
-            // Agrupar todas las entradas por jugador
             const players = new Map();
             allEntries.filter(entry => !entry.isTableBreak).forEach(entry => {
-                if (!players.has(entry.rut)) {
-                    players.set(entry.rut, { nombre: entry.nombre, apellido: entry.apellido, rut: entry.rut, entries: [] });
-                }
+                if (!players.has(entry.rut)) { players.set(entry.rut, { nombre: entry.nombre, apellido: entry.apellido, rut: entry.rut, entries: [] }); }
                 players.get(entry.rut).entries.push(entry);
             });
             const playerList = Array.from(players.values()).sort((a, b) => `${a.nombre} ${a.apellido}`.localeCompare(`${b.nombre} ${b.apellido}`));
-
-            // Dibujar la cabecera de la tabla
             drawText("Nombre y Apellido", { x: 50, size: 10, isBold: true });
             drawText("RUT", { x: 280, size: 10, isBold: true });
             drawText("Cupones Utilizados", { x: 400, size: 10, isBold: true });
             y -= 5;
             page.drawLine({ start: { x: 50, y: y }, end: { x: width - 50, y: y }, thickness: .5 });
             y -= 15;
-
-            // Dibujar cada jugador y sus cupones
             playerList.forEach(player => {
-                if (y < 40) { // Lógica para crear una nueva página si no hay espacio
-                    page = pdfDoc.addPage();
-                    y = height - 40;
-                }
-                const couponTexts = player.entries.map(entry => {
-                    if (entry.cuponSorteo) return "CS";
-                    if (entry.ticketCanje) return "TC";
-                    return "-";
-                });
-
+                if (y < 40) { page = pdfDoc.addPage(); y = height - 40; }
+                const couponTexts = player.entries.map(entry => { if (entry.cuponSorteo) return "CS"; if (entry.ticketCanje) return "TC"; return "-"; });
                 drawText(`${player.nombre} ${player.apellido}`, { x: 50, size: 10 });
                 drawText((player.rut || ""), { x: 280, size: 10 });
                 drawText(couponTexts.join(', '), { x: 400, size: 10 });
                 y -= 15;
             });
         }
-
         const pdfBytes = await pdfDoc.save();
         const fileName = options.isFinalReport ? `Acta_Ganadores_${tournamentId}_${tournamentDate}.pdf` : `Informe_Participantes_${tournamentId}_${tournamentDate}.pdf`;
         download(pdfBytes, fileName, "application/pdf");
         showToast("PDF generado correctamente.", true);
     }
-    
     async function saveBaseToFile() { const clientes = await getClientesFromSheet(); if (!clientes) return showToast("No se pudo obtener la base de datos para guardar."); const dataStr = JSON.stringify(clientes, null, 2); const blob = new Blob([dataStr], { type: "application/json" }); download(blob, 'base_clientes_sheets.json', 'application/json'); showToast("Base de datos de clientes (Sheets) guardada.", true); }
     function saveTournamentToFile(){const e=document.getElementById("tournamentSelector").value,t={version:"2.1",tournamentType:e,date:localStorage.getItem("tournamentDate"),director:localStorage.getItem("tournamentDirector"),endTime:localStorage.getItem("registrationEndTime"),prizePool:localStorage.getItem("prizePool"),prizes:JSON.parse(localStorage.getItem("tournamentPrizes")||"{}"),limits:getGameLimits(),chips:getChips(),clients:getClientesTorneo(e),finalists:getFinalists(e),rouletteBallCount:localStorage.getItem("rouletteBallCount")||"3"};const o=JSON.stringify(t,null,2),n=new Blob([o],{type:"application/json"}),l=document.createElement("a");l.href=URL.createObjectURL(n),l.download=`torneo_${e}_${t.date}.json`,l.click(),URL.revokeObjectURL(l.href),showToast("Torneo guardado correctamente.",!0)}
     function loadTournamentFromFile(e){const t=e.target.files[0];if(!t)return;const o=new FileReader;o.onload=t=>{let o;try{o=JSON.parse(t.target.result)}catch(e){return console.error("Error de sintaxis JSON:",e),void showToast("Error crítico: El archivo no es un JSON válido.")}let n=o.clients||o.participants;if(!o.tournamentType||!n||!Array.isArray(n))return void showToast("Error de validación: Archivo no es un torneo válido.");const l=e=>{return e.hasOwnProperty("cuponTorneo")&&(e.cuponSorteo=e.cuponTorneo,delete e.cuponTorneo),e.hasOwnProperty("cuponCanjeo")&&(e.ticketCanje=e.cuponCanjeo,delete e.cuponCanjeo),e};n=n.map(l);let a=(o.finalists||[]).map(l);try{const t=o.tournamentType;localStorage.setItem("selectedTournament",t),localStorage.setItem("tournamentDate",o.date||""),localStorage.setItem("tournamentDirector",o.director||""),localStorage.setItem("registrationEndTime",o.endTime||""),localStorage.setItem("prizePool",o.prizePool||"0"),localStorage.setItem("tournamentPrizes",JSON.stringify(o.prizes||{})),localStorage.setItem("gameLimits",JSON.stringify(o.limits||{})),localStorage.setItem("rouletteBallCount",o.rouletteBallCount||"3"),saveChips(o.chips||[]),saveClientesTorneo(t,n),saveFinalists(t,a),document.getElementById("tournamentSelector").value=t,document.getElementById("tournamentDate").value=o.date||(new Date).toISOString().split("T")[0],document.getElementById("tournamentDirector").value=o.director||"";const l=o.prizes||{};document.getElementById("prizePoolInput").value=formatNumberForDisplay(o.prizePool),document.getElementById("firstPrize").value=formatNumberForDisplay(l.first),document.getElementById("secondPrize").value=formatNumberForDisplay(l.second),document.getElementById("thirdPrize").value=formatNumberForDisplay(l.third);const r=o.limits||{};document.getElementById("minBetInput").value=formatNumberForDisplay(r.minBet),document.getElementById("maxBetInput").value=formatNumberForDisplay(r.maxBet),document.getElementById("minPlenoInput").value=formatNumberForDisplay(r.minPleno),document.getElementById("maxPlenoInput").value=formatNumberForDisplay(r.maxPleno),document.getElementById("rouletteBallCount").value=o.rouletteBallCount||"3",showToast("Torneo cargado correctamente.",!0),closeConfigModal(),changeTournament()}catch(t){console.error("Error al aplicar datos del torneo:",t),showToast("Error de aplicación. Prueba un Reinicio Forzado.")}finally{e.target.value=""}},o.readAsText(t)}
