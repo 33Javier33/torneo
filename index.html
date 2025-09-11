@@ -61,7 +61,6 @@
         input:checked + .slider { background-color: #2196F3; }
         input:checked + .slider:before { transform: translateX(26px); }
         
-        /* --- MODIFICADO: Botones de navegación posicionados individualmente --- */
         .nav-button {
             position: fixed;
             top: 1rem;
@@ -72,11 +71,22 @@
 <body class="flex flex-col items-center p-4 md:p-8 min-h-screen">
 
     <!-- Botones de navegación sin contenedor -->
-    <a href="base/index.html" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors nav-button" style="left: 1.5rem;">Base de Datos</a>
+    <button onclick="promptForBaseAccess()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors nav-button" style="left: 1.5rem;">Base de Datos</button>
     <a href="torneo/index.html" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors nav-button" style="right: 1.5rem;">Ver Torneo</a>
 
     <div id="rutModal" class="modal-container"><div id="modalContent" class="modal-content"></div></div>
     
+    <!-- Modal de Contraseña -->
+    <div id="passwordModal" class="modal-container">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closePasswordModal()">&times;</span>
+            <h2 class="text-xl font-bold mb-4">Acceso a Base de Datos</h2>
+            <p class="mb-4 text-gray-600">Para proteger la información, por favor ingresa el código de acceso.</p>
+            <input type="password" id="passwordInput" placeholder="Código de acceso" class="w-full p-2 border rounded-md mb-4">
+            <button onclick="checkPassword()" class="w-full bg-blue-600 text-white py-2 rounded-md font-bold hover:bg-blue-700 transition-colors">Verificar</button>
+        </div>
+    </div>
+
     <div id="editModal" class="modal-container">
         <div class="modal-content">
             <span class="close-btn" onclick="closeEditModal()">&times;</span>
@@ -336,6 +346,35 @@
     const TOURNAMENTS = { ruleta: { name: 'Torneo de Ruleta', playersPerTable: 5, type: 'roulette' }, draw_poker: { name: 'Torneo de Draw Poker', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }, blackjack: { name: 'Torneo de Blackjack', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }, ruleta_vip: { name: 'Torneo de Ruleta VIP', playersPerTable: 5, type: 'roulette' }, draw_poker_vip: { name: 'Torneo de Draw Poker VIP', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' }, blackjack_vip: { name: 'Torneo de Blackjack VIP', playersPerTable: 6, rounds: ['Puntaje'], type: 'cards' } };
     const PREDEFINED_COLORS = ['#E53935', '#D81B60', '#8E24AA', '#1E88E5', '#00897B', '#43A047', '#FDD835', '#FB8C00', '#6D4C41', '#455A64', '#FFFFFF', '#000000'];
     let selectedIndices = [], sortableInstance = null, chipColorPickerTarget = null, selectedClientRut = null;
+
+    // --- Funciones para el Modal de Contraseña ---
+    function promptForBaseAccess() {
+        document.getElementById('passwordModal').style.display = 'flex';
+        document.getElementById('passwordInput').focus();
+    }
+
+    function closePasswordModal() {
+        document.getElementById('passwordInput').value = ''; 
+        document.getElementById('passwordModal').style.display = 'none';
+    }
+
+    function checkPassword() {
+        const passwordInput = document.getElementById('passwordInput');
+        const enteredPassword = passwordInput.value;
+        const correctPassword = '230825'; // Contraseña predefinida
+
+        if (enteredPassword === correctPassword) {
+            showToast('Acceso concedido. Redirigiendo...', true);
+            setTimeout(() => {
+                window.location.href = 'base/index.html';
+            }, 1000); 
+        } else {
+            showToast('Código incorrecto. Inténtalo de nuevo.');
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+    }
+
     function getTournamentRounds(e){const t=TOURNAMENTS[e];if(!t)return[];if("roulette"===t.type){const e=parseInt(localStorage.getItem("rouletteBallCount")||"3");return Array.from({length:e},(e,t)=>`Bolita ${t+1}`)}return t.rounds||[]}
     function showToast(e,t=!1, duration=3000){const o=document.getElementById("toast");o.textContent=e,o.className=`toast show ${t?"success":""}`,setTimeout(()=>o.classList.remove("show"),duration)}
     function getClientesTorneo(e){return JSON.parse(localStorage.getItem(`clientes_${e}`)||"[]")}
@@ -433,6 +472,13 @@
     document.addEventListener("DOMContentLoaded",()=>{
         const e=document.getElementById("tournamentSelector");Object.keys(TOURNAMENTS).forEach(t=>e.add(new Option(TOURNAMENTS[t].name,t))),e.value=localStorage.getItem("selectedTournament")||"ruleta",document.getElementById("tournamentDate").value=localStorage.getItem("tournamentDate")||(new Date).toISOString().split("T")[0],document.getElementById("tournamentDirector").value=localStorage.getItem("tournamentDirector")||"";const t=document.getElementById("prizePoolInput");t.value=formatNumberForDisplay(localStorage.getItem("prizePool"));const o=JSON.parse(localStorage.getItem("tournamentPrizes")||"{}");document.getElementById("firstPrize").value=formatNumberForDisplay(o.first),document.getElementById("secondPrize").value=formatNumberForDisplay(o.second),document.getElementById("thirdPrize").value=formatNumberForDisplay(o.third);const n=getGameLimits();document.getElementById("minBetInput").value=formatNumberForDisplay(n.minBet),document.getElementById("maxBetInput").value=formatNumberForDisplay(n.maxBet),document.getElementById("minPlenoInput").value=formatNumberForDisplay(n.minPleno),document.getElementById("maxPlenoInput").value=formatNumberForDisplay(n.maxPleno),document.getElementById("registrationEndTime").value=localStorage.getItem("registrationEndTime")||"",document.getElementById("rouletteBallCount").value=localStorage.getItem("rouletteBallCount")||"3",localStorage.setItem("tournament_view_state","classification"),changeTournament();
         
+        document.getElementById('passwordInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); 
+                checkPassword();
+            }
+        });
+
         document.getElementById("addNombre").addEventListener("input", async (e) => {
             const searchTerm = e.target.value.toLowerCase();
             const resultsContainer = document.getElementById("searchResults");
