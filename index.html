@@ -66,6 +66,18 @@
             top: 1rem;
             z-index: 20;
         }
+        /* Estilos para el ícono del ojo */
+        .password-container {
+            position: relative;
+        }
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #9ca3af;
+        }
     </style>
 </head>
 <body class="flex flex-col items-center p-4 md:p-8 min-h-screen">
@@ -76,16 +88,76 @@
 
     <div id="rutModal" class="modal-container"><div id="modalContent" class="modal-content"></div></div>
     
-    <!-- Modal de Contraseña -->
+    <!-- Modal de Contraseña Mejorado -->
     <div id="passwordModal" class="modal-container">
         <div class="modal-content">
             <span class="close-btn" onclick="closePasswordModal()">&times;</span>
-            <h2 class="text-xl font-bold mb-4">Acceso a Base de Datos</h2>
-            <p class="mb-4 text-gray-600">Para proteger la información, por favor ingresa el código de acceso.</p>
-            <input type="password" id="passwordInput" placeholder="Código de acceso" class="w-full p-2 border rounded-md mb-4">
-            <button onclick="checkPassword()" class="w-full bg-blue-600 text-white py-2 rounded-md font-bold hover:bg-blue-700 transition-colors">Verificar</button>
+
+            <!-- Vista de Login (por defecto) -->
+            <div id="loginView">
+                <h2 class="text-xl font-bold mb-4">Acceso a Base de Datos</h2>
+                <p class="mb-4 text-gray-600">Para proteger la información, por favor ingresa el código de acceso.</p>
+                <div class="password-container mb-4">
+                    <input type="password" id="passwordInput" placeholder="Código de acceso" class="w-full p-2 border rounded-md pr-10">
+                    <span class="toggle-password" onclick="togglePasswordVisibility('passwordInput', this)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16">
+                          <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                          <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                        </svg>
+                    </span>
+                </div>
+                <button onclick="checkPassword()" class="w-full bg-blue-600 text-white py-2 rounded-md font-bold hover:bg-blue-700 transition-colors">Verificar</button>
+                <div class="mt-4 text-sm text-center">
+                    <a href="#" onclick="event.preventDefault(); showChangePasswordView();" class="text-blue-600 hover:underline">Cambiar código</a> |
+                    <a href="#" onclick="event.preventDefault(); showForgotPasswordView();" class="text-gray-600 hover:underline">Olvidé mi código</a>
+                </div>
+            </div>
+
+            <!-- Vista para Cambiar Contraseña (oculta) -->
+            <div id="changePasswordView" class="hidden">
+                <h2 class="text-xl font-bold mb-4">Cambiar Código de Acceso</h2>
+                <div class="password-container mb-2">
+                    <input type="password" id="currentPasswordInput" placeholder="Código Actual" class="w-full p-2 border rounded-md pr-10">
+                     <span class="toggle-password" onclick="togglePasswordVisibility('currentPasswordInput', this)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                    </span>
+                </div>
+                <div class="password-container mb-2">
+                    <input type="password" id="newPasswordInput" placeholder="Nuevo Código (mín. 4 caracteres)" class="w-full p-2 border rounded-md pr-10">
+                     <span class="toggle-password" onclick="togglePasswordVisibility('newPasswordInput', this)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                    </span>
+                </div>
+                <div class="password-container mb-4">
+                    <input type="password" id="confirmNewPasswordInput" placeholder="Confirmar Nuevo Código" class="w-full p-2 border rounded-md pr-10">
+                     <span class="toggle-password" onclick="togglePasswordVisibility('confirmNewPasswordInput', this)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                    </span>
+                </div>
+                <button onclick="changePassword()" class="w-full bg-green-600 text-white py-2 rounded-md font-bold hover:bg-green-700 transition-colors">Guardar Nuevo Código</button>
+                 <div class="mt-4 text-sm text-center">
+                    <a href="#" onclick="event.preventDefault(); showLoginView();" class="text-blue-600 hover:underline">&larr; Volver a Acceso</a>
+                </div>
+            </div>
+
+            <!-- Vista para Recuperar Contraseña (oculta) -->
+            <div id="forgotPasswordView" class="hidden">
+                <h2 class="text-xl font-bold mb-4">Restablecer Código</h2>
+                <p class="mb-4 text-gray-600">Ingresa el código maestro para restablecer el acceso al código predeterminado (`Supervisor`).</p>
+                <div class="password-container mb-4">
+                    <input type="password" id="masterCodeInput" placeholder="Código Maestro" class="w-full p-2 border rounded-md pr-10">
+                     <span class="toggle-password" onclick="togglePasswordVisibility('masterCodeInput', this)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+                    </span>
+                </div>
+                <button onclick="resetPassword()" class="w-full bg-orange-500 text-white py-2 rounded-md font-bold hover:bg-orange-600 transition-colors">Restablecer</button>
+                <div class="mt-4 text-sm text-center">
+                    <a href="#" onclick="event.preventDefault(); showLoginView();" class="text-blue-600 hover:underline">&larr; Volver a Acceso</a>
+                </div>
+            </div>
         </div>
     </div>
+
 
     <div id="editModal" class="modal-container">
         <div class="modal-content">
@@ -349,19 +421,42 @@
 
     // --- Funciones para el Modal de Contraseña ---
     function promptForBaseAccess() {
+        showLoginView();
         document.getElementById('passwordModal').style.display = 'flex';
         document.getElementById('passwordInput').focus();
     }
 
     function closePasswordModal() {
         document.getElementById('passwordInput').value = ''; 
+        document.getElementById('currentPasswordInput').value = '';
+        document.getElementById('newPasswordInput').value = '';
+        document.getElementById('confirmNewPasswordInput').value = '';
+        document.getElementById('masterCodeInput').value = '';
         document.getElementById('passwordModal').style.display = 'none';
+    }
+
+    function showLoginView() {
+        document.getElementById('loginView').classList.remove('hidden');
+        document.getElementById('changePasswordView').classList.add('hidden');
+        document.getElementById('forgotPasswordView').classList.add('hidden');
+    }
+
+    function showChangePasswordView() {
+        document.getElementById('loginView').classList.add('hidden');
+        document.getElementById('changePasswordView').classList.remove('hidden');
+        document.getElementById('forgotPasswordView').classList.add('hidden');
+    }
+
+    function showForgotPasswordView() {
+        document.getElementById('loginView').classList.add('hidden');
+        document.getElementById('changePasswordView').classList.add('hidden');
+        document.getElementById('forgotPasswordView').classList.remove('hidden');
     }
 
     function checkPassword() {
         const passwordInput = document.getElementById('passwordInput');
         const enteredPassword = passwordInput.value;
-        const correctPassword = '110925'; // Contraseña predefinida
+        const correctPassword = localStorage.getItem('database_access_code') || 'Supervisor'; 
 
         if (enteredPassword === correctPassword) {
             showToast('Acceso concedido. Redirigiendo...', true);
@@ -374,6 +469,53 @@
             passwordInput.focus();
         }
     }
+
+    function changePassword() {
+        const currentPassword = document.getElementById('currentPasswordInput').value;
+        const newPassword = document.getElementById('newPasswordInput').value;
+        const confirmNewPassword = document.getElementById('confirmNewPasswordInput').value;
+        const correctCurrentPassword = localStorage.getItem('database_access_code') || 'Supervisor';
+
+        if (currentPassword !== correctCurrentPassword) {
+            showToast('El código actual es incorrecto.');
+            return;
+        }
+        if (!newPassword || newPassword.length < 4) {
+             showToast('El nuevo código debe tener al menos 4 caracteres.');
+             return;
+        }
+        if (newPassword !== confirmNewPassword) {
+            showToast('Los nuevos códigos no coinciden.');
+            return;
+        }
+
+        localStorage.setItem('database_access_code', newPassword);
+        showToast('Código cambiado exitosamente.', true);
+        closePasswordModal();
+    }
+    
+    function resetPassword() {
+        const masterCodeInput = document.getElementById('masterCodeInput').value;
+        const correctMasterCode = '0000'; 
+
+        if (masterCodeInput === correctMasterCode) {
+            localStorage.removeItem('database_access_code');
+            showToast('Código restablecido al predeterminado (Supervisor).', true);
+            closePasswordModal();
+        } else {
+            showToast('Código maestro incorrecto.');
+        }
+    }
+
+    function togglePasswordVisibility(inputId, toggleIcon) {
+        const input = document.getElementById(inputId);
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        toggleIcon.innerHTML = isPassword 
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-eye-slash" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.94 5.94 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.707z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.707zm10.296 6.884-12-12 .708-.708 12 12-.708.708z"/></svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>`;
+    }
+
 
     function getTournamentRounds(e){const t=TOURNAMENTS[e];if(!t)return[];if("roulette"===t.type){const e=parseInt(localStorage.getItem("rouletteBallCount")||"3");return Array.from({length:e},(e,t)=>`Bolita ${t+1}`)}return t.rounds||[]}
     function showToast(e,t=!1, duration=3000){const o=document.getElementById("toast");o.textContent=e,o.className=`toast show ${t?"success":""}`,setTimeout(()=>o.classList.remove("show"),duration)}
@@ -472,12 +614,10 @@
     document.addEventListener("DOMContentLoaded",()=>{
         const e=document.getElementById("tournamentSelector");Object.keys(TOURNAMENTS).forEach(t=>e.add(new Option(TOURNAMENTS[t].name,t))),e.value=localStorage.getItem("selectedTournament")||"ruleta",document.getElementById("tournamentDate").value=localStorage.getItem("tournamentDate")||(new Date).toISOString().split("T")[0],document.getElementById("tournamentDirector").value=localStorage.getItem("tournamentDirector")||"";const t=document.getElementById("prizePoolInput");t.value=formatNumberForDisplay(localStorage.getItem("prizePool"));const o=JSON.parse(localStorage.getItem("tournamentPrizes")||"{}");document.getElementById("firstPrize").value=formatNumberForDisplay(o.first),document.getElementById("secondPrize").value=formatNumberForDisplay(o.second),document.getElementById("thirdPrize").value=formatNumberForDisplay(o.third);const n=getGameLimits();document.getElementById("minBetInput").value=formatNumberForDisplay(n.minBet),document.getElementById("maxBetInput").value=formatNumberForDisplay(n.maxBet),document.getElementById("minPlenoInput").value=formatNumberForDisplay(n.minPleno),document.getElementById("maxPlenoInput").value=formatNumberForDisplay(n.maxPleno),document.getElementById("registrationEndTime").value=localStorage.getItem("registrationEndTime")||"",document.getElementById("rouletteBallCount").value=localStorage.getItem("rouletteBallCount")||"3",localStorage.setItem("tournament_view_state","classification"),changeTournament();
         
-        document.getElementById('passwordInput').addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault(); 
-                checkPassword();
-            }
-        });
+        // Listen for Enter key on password fields
+        document.getElementById('passwordInput').addEventListener('keypress', function(event) { if (event.key === 'Enter') { event.preventDefault(); checkPassword(); }});
+        document.getElementById('confirmNewPasswordInput').addEventListener('keypress', function(event) { if (event.key === 'Enter') { event.preventDefault(); changePassword(); }});
+        document.getElementById('masterCodeInput').addEventListener('keypress', function(event) { if (event.key === 'Enter') { event.preventDefault(); resetPassword(); }});
 
         document.getElementById("addNombre").addEventListener("input", async (e) => {
             const searchTerm = e.target.value.toLowerCase();
@@ -515,5 +655,3 @@
     </script>
 </body>
 </html>
-
-
