@@ -647,7 +647,7 @@
     
                     drawText(prizeInfo.label, { x: 50, size: 14, isBold: true });
                     y -= 25;
-                    drawText(`RUT: ${winner.rut || ""}`, { x: 60, size: 12 });
+                    drawText(`RUT: ${(winner.rut || "").replace(/[.-]/g, '')}`, { x: 60, size: 12 });
                     y -= 20;
                     drawText(`Nombres: ${winner.nombre}`, { x: 60, size: 12 });
                     y -= 20;
@@ -696,7 +696,7 @@
                     return "Ninguno";
                 }).join(', ');
                 
-                drawText(player.rut || "", { x: 50, size: 10 });
+                drawText((player.rut || "").replace(/[.-]/g, ''), { x: 50, size: 10 });
                 drawText(player.nombre, { x: 150, size: 10 });
                 drawText(player.apellido, { x: 300, size: 10 });
                 drawText(couponTypes, { x: 450, size: 10 });
@@ -772,5 +772,4 @@
     </script>
 </body>
 </html>
-
 
